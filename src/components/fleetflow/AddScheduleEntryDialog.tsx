@@ -1,3 +1,4 @@
+
 "use client";
 import { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,7 +22,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ScheduleEntry, Truck, Driver } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const scheduleEntrySchema = z.object({
@@ -32,6 +33,7 @@ const scheduleEntrySchema = z.object({
   end: z.date({ required_error: "End date is required." }),
   origin: z.string().min(2, "Origin is required."),
   destination: z.string().min(2, "Destination is required."),
+  loadValue: z.coerce.number().positive({ message: "Load value must be a positive amount." }).optional(),
   notes: z.string().optional(),
   color: z.string().optional(),
 }).refine(data => data.end >= data.start, {
@@ -72,6 +74,7 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
       end: new Date(new Date().setDate(new Date().getDate() + 1)),
       origin: '',
       destination: '',
+      loadValue: undefined,
       notes: '',
       color: colorOptions[0].value,
     },
@@ -79,7 +82,10 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
 
   useEffect(() => {
     if (entryToEdit) {
-      form.reset(entryToEdit);
+      form.reset({
+        ...entryToEdit,
+        loadValue: entryToEdit.loadValue ?? undefined, // Ensure undefined if null/0 not allowed by positive()
+      });
     } else {
       form.reset({
         title: '',
@@ -89,6 +95,7 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
         end: new Date(new Date().setDate(new Date().getDate() + 1)),
         origin: '',
         destination: '',
+        loadValue: undefined,
         notes: '',
         color: colorOptions[0].value,
       });
@@ -150,7 +157,7 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="start" className="text-foreground">Start Date & Time</Label>
+              <Label htmlFor="start" className="text-foreground">Start Date &amp; Time</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -177,7 +184,7 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
               {form.formState.errors.start && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.start.message}</p>}
             </div>
             <div>
-              <Label htmlFor="end" className="text-foreground">End Date & Time</Label>
+              <Label htmlFor="end" className="text-foreground">End Date &amp; Time</Label>
                <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -218,24 +225,35 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
             </div>
           </div>
           
-          <div>
-            <Label htmlFor="color" className="text-foreground">Event Color</Label>
-            <Select onValueChange={(value) => form.setValue("color", value)} defaultValue={form.getValues("color")}>
-              <SelectTrigger id="color" className="mt-1 bg-background border-border focus:ring-primary">
-                <SelectValue placeholder="Select color" />
-              </SelectTrigger>
-              <SelectContent>
-                {colorOptions.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full" style={{ backgroundColor: opt.value }}></div>
-                      {opt.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+                <Label htmlFor="loadValue" className="text-foreground">Load Value (Optional)</Label>
+                <div className="relative mt-1">
+                    <DollarSign className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input id="loadValue" type="number" step="0.01" {...form.register("loadValue")} className="pl-7 bg-background border-border focus:ring-primary" placeholder="e.g., 1500.00"/>
+                </div>
+                {form.formState.errors.loadValue && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.loadValue.message}</p>}
+            </div>
+            <div>
+                <Label htmlFor="color" className="text-foreground">Event Color</Label>
+                <Select onValueChange={(value) => form.setValue("color", value)} defaultValue={form.getValues("color")}>
+                <SelectTrigger id="color" className="mt-1 bg-background border-border focus:ring-primary">
+                    <SelectValue placeholder="Select color" />
+                </SelectTrigger>
+                <SelectContent>
+                    {colorOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                        <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 rounded-full" style={{ backgroundColor: opt.value }}></div>
+                        {opt.label}
+                        </div>
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+            </div>
           </div>
+
 
           <div>
             <Label htmlFor="notes" className="text-foreground">Notes (Optional)</Label>

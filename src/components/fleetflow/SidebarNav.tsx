@@ -1,3 +1,4 @@
+
 "use client";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -9,7 +10,8 @@ import {
   Users,
   Briefcase,
   Route,
-  Settings, // Example icon for settings or other future links
+  Settings,
+  Blocks, // Icon for Load Optimization
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -26,6 +28,7 @@ const navItems: NavItem[] = [
   { href: '/dashboard/drivers', label: 'Drivers', icon: Users },
   { href: '/dashboard/carriers', label: 'Carriers', icon: Briefcase },
   { href: '/dashboard/optimize-route', label: 'Optimize Route', icon: Route },
+  { href: '/dashboard/optimize-load', label: 'Optimize Load', icon: Blocks },
 ];
 
 export function SidebarNav() {
@@ -41,7 +44,8 @@ export function SidebarNav() {
             className={cn(
               'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-primary/10',
               pathname === item.href && 'bg-primary/10 text-primary font-medium',
-              pathname.startsWith(item.href) && item.href !== '/dashboard/overview' && 'bg-primary/10 text-primary font-medium'
+               // Highlight parent if on a sub-route, except for overview
+              (pathname.startsWith(item.href) && item.href !== '/dashboard/overview' && pathname !== '/dashboard/overview') && 'bg-primary/10 text-primary font-medium'
             )}
           >
             <item.icon className="h-5 w-5" />
@@ -51,7 +55,7 @@ export function SidebarNav() {
       </nav>
       <div className="mt-auto p-4 border-t">
          <Link
-            href="/dashboard/settings" // Example settings link
+            href="/dashboard/settings" 
             className={cn(
               'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-primary/10',
               pathname === '/dashboard/settings' && 'bg-primary/10 text-primary font-medium'

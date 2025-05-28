@@ -1,3 +1,4 @@
+
 "use client";
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback } from 'react';
@@ -46,9 +47,10 @@ const initialCarriers: Carrier[] = [
 ];
 
 const initialScheduleEntries: ScheduleEntry[] = [
-  { id: 'sch1', truckId: 'truck1', driverId: 'driver1', title: 'Delivery to LA', start: new Date(new Date().setDate(new Date().getDate() + 1)), end: new Date(new Date().setDate(new Date().getDate() + 2)), origin: 'Phoenix, AZ', destination: 'Los Angeles, CA', color: 'hsl(var(--primary))' },
-  { id: 'sch2', truckId: 'truck2', driverId: 'driver2', title: 'Pickup from Dallas', start: new Date(new Date().setDate(new Date().getDate() + 3)), end: new Date(new Date().setDate(new Date().getDate() + 3)), origin: 'Houston, TX', destination: 'Dallas, TX', notes: 'Handle with care', color: 'hsl(var(--accent))' },
+  { id: 'sch1', truckId: 'truck1', driverId: 'driver1', title: 'Delivery to LA', start: new Date(new Date().setDate(new Date().getDate() + 1)), end: new Date(new Date().setDate(new Date().getDate() + 2)), origin: 'Phoenix, AZ', destination: 'Los Angeles, CA', loadValue: 2500.00, color: 'hsl(var(--primary))' },
+  { id: 'sch2', truckId: 'truck2', driverId: 'driver2', title: 'Pickup from Dallas', start: new Date(new Date().setDate(new Date().getDate() + 3)), end: new Date(new Date().setDate(new Date().getDate() + 3)), origin: 'Houston, TX', destination: 'Dallas, TX', loadValue: 1800.50, notes: 'Handle with care', color: 'hsl(var(--accent))' },
   { id: 'sch3', truckId: 'truck1', title: 'Maintenance', start: new Date(new Date().setDate(new Date().getDate() + 5)), end: new Date(new Date().setDate(new Date().getDate() + 5)), origin: 'Base', destination: 'Garage', color: 'hsl(var(--destructive))' },
+  { id: 'sch4', truckId: 'truck1', driverId: 'driver1', title: 'Long Haul to NY', start: new Date(new Date().setDate(new Date().getDate() + 7)), end: new Date(new Date().setDate(new Date().getDate() + 10)), origin: 'Los Angeles, CA', destination: 'New York, NY', loadValue: 5500.75, notes: 'High value goods', color: 'hsl(var(--primary))' },
 ];
 
 
