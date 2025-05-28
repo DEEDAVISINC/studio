@@ -1,3 +1,4 @@
+
 "use client";
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
@@ -6,10 +7,32 @@ import { PlusCircle } from "lucide-react";
 import { AddCarrierDialog } from "@/components/fleetflow/AddCarrierDialog";
 import { CarrierListTable } from "@/components/fleetflow/CarrierListTable";
 import { useAppData } from '@/contexts/AppDataContext';
+import type { Carrier } from '@/lib/types';
 
 export default function CarriersPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingCarrier, setEditingCarrier] = useState<Carrier | null>(null);
   const { carriers, addCarrier, updateCarrier, removeCarrier } = useAppData();
+
+  const handleAddOrUpdateCarrier = (carrierData: Omit<Carrier, 'id'> | Carrier) => {
+    if (editingCarrier && 'id' in carrierData) {
+      updateCarrier(carrierData as Carrier);
+    } else {
+      addCarrier(carrierData as Omit<Carrier, 'id'>);
+    }
+    setEditingCarrier(null); // Reset editing state
+  };
+
+  const openEditDialog = (carrier: Carrier) => {
+    setEditingCarrier(carrier);
+    setIsAddDialogOpen(true);
+  };
+  
+  const openAddDialog = () => {
+    setEditingCarrier(null);
+    setIsAddDialogOpen(true);
+  };
+
 
   return (
     <div className="space-y-6">
@@ -18,7 +41,7 @@ export default function CarriersPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Manage Carriers</h1>
           <p className="text-muted-foreground">View, add, edit, or remove carriers.</p>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)} className="bg-primary hover:bg-primary/90">
+        <Button onClick={openAddDialog} className="bg-primary hover:bg-primary/90">
           <PlusCircle className="mr-2 h-5 w-5" /> Add Carrier
         </Button>
       </div>
@@ -26,12 +49,12 @@ export default function CarriersPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>Carrier List</CardTitle>
-          <CardDescription>A list of all registered carriers.</CardDescription>
+          <CardDescription>A list of all registered carriers with their details.</CardDescription>
         </CardHeader>
         <CardContent>
           <CarrierListTable 
             carriers={carriers}
-            onEdit={(carrier) => { /* Placeholder for edit */ console.log("Edit carrier:", carrier); }}
+            onEdit={openEditDialog}
             onDelete={removeCarrier}
           />
         </CardContent>
@@ -39,8 +62,12 @@ export default function CarriersPage() {
 
       <AddCarrierDialog
         isOpen={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        onAddCarrier={addCarrier}
+        onOpenChange={(isOpen) => {
+            setIsAddDialogOpen(isOpen);
+            if (!isOpen) setEditingCarrier(null); // Clear editing state when dialog closes
+        }}
+        onAddCarrier={handleAddOrUpdateCarrier}
+        carrierToEdit={editingCarrier}
       />
     </div>
   );

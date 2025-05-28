@@ -1,11 +1,15 @@
+
 "use client";
 import type { Truck, Driver, Carrier } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Trash2, Edit3, Eye } from "lucide-react";
+import { MoreHorizontal, Trash2, Edit3, Eye, CalendarClock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { format, parseISO, isPast, differenceInDays } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface TruckListTableProps {
   trucks: Truck[];
@@ -22,11 +26,25 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
 
   const getStatusBadgeVariant = (status: Truck['maintenanceStatus']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
-      case 'Good': return 'default'; // Or a custom green-like variant
+      case 'Good': return 'default'; 
       case 'Needs Service': return 'destructive';
-      case 'In Service': return 'secondary'; // Or a custom yellow-like variant
+      case 'In Service': return 'secondary'; 
       default: return 'outline';
     }
+  };
+
+  const formatDate = (dateInput?: Date | string): string => {
+    if (!dateInput) return 'N/A';
+    const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput;
+    return format(date, 'MMM d, yyyy');
+  };
+
+  const getDateColor = (dateInput?: Date | string): string => {
+    if (!dateInput) return 'text-muted-foreground';
+    const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput;
+    if (isPast(date)) return 'text-destructive font-semibold';
+    if (differenceInDays(date, new Date()) < 30) return 'text-yellow-600 font-semibold'; // Using Tailwind yellow
+    return 'text-foreground';
   };
   
   if (trucks.length === 0) {
@@ -34,25 +52,27 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
   }
 
   return (
+    <TooltipProvider>
     <div className="rounded-md border">
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Name</TableHead>
           <TableHead>License Plate</TableHead>
-          <TableHead>Model & Year</TableHead>
           <TableHead>Carrier</TableHead>
           <TableHead>Driver</TableHead>
           <TableHead>Status</TableHead>
+          <TableHead>MC150 Due</TableHead>
+          <TableHead>Permit Expiry</TableHead>
+          <TableHead>Tax Due</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {trucks.map((truck) => (
           <TableRow key={truck.id}>
-            <TableCell className="font-medium">{truck.name}</TableCell>
+            <TableCell className="font-medium">{truck.name} <span className="text-xs text-muted-foreground">({truck.model} {truck.year})</span></TableCell>
             <TableCell>{truck.licensePlate}</TableCell>
-            <TableCell>{truck.model} ({truck.year})</TableCell>
             <TableCell>{getCarrierName(truck.carrierId)}</TableCell>
             <TableCell>{getDriverName(truck.driverId)}</TableCell>
             <TableCell>
@@ -60,10 +80,43 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
                      className={cn(
                        truck.maintenanceStatus === 'Good' && 'bg-green-500 hover:bg-green-600 text-white',
                        truck.maintenanceStatus === 'Needs Service' && 'bg-red-500 hover:bg-red-600 text-white',
-                       truck.maintenanceStatus === 'In Service' && 'bg-yellow-500 hover:bg-yellow-600 text-black'
+                       truck.maintenanceStatus === 'In Service' && 'bg-yellow-500 hover:bg-yellow-600 text-black' // Updated for better visibility
                      )}>
                 {truck.maintenanceStatus}
               </Badge>
+            </TableCell>
+            <TableCell className={cn("text-xs", getDateColor(truck.mc150DueDate))}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span className="flex items-center gap-1">
+                            {truck.mc150DueDate && <CalendarClock className="h-3 w-3" />}
+                            {formatDate(truck.mc150DueDate)}
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent><p>{truck.mc150DueDate ? 'MC150 Biennial Update Due' : 'MC150 Date Not Set'}</p></TooltipContent>
+                </Tooltip>
+            </TableCell>
+            <TableCell className={cn("text-xs", getDateColor(truck.permitExpiryDate))}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span className="flex items-center gap-1">
+                             {truck.permitExpiryDate && <CalendarClock className="h-3 w-3" />}
+                            {formatDate(truck.permitExpiryDate)}
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent><p>{truck.permitExpiryDate ? 'Permit Expiry Date' : 'Permit Expiry Not Set'}</p></TooltipContent>
+                </Tooltip>
+            </TableCell>
+            <TableCell className={cn("text-xs", getDateColor(truck.taxDueDate))}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span className="flex items-center gap-1">
+                            {truck.taxDueDate && <CalendarClock className="h-3 w-3" />}
+                            {formatDate(truck.taxDueDate)}
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent><p>{truck.taxDueDate ? 'Tax Due Date' : 'Tax Due Date Not Set'}</p></TooltipContent>
+                </Tooltip>
             </TableCell>
             <TableCell className="text-right">
               <AlertDialog>
@@ -75,9 +128,9 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => console.log("View truck:", truck)}>
+                    {/* <DropdownMenuItem onClick={() => console.log("View truck:", truck)}>
                       <Eye className="mr-2 h-4 w-4" /> View Details
-                    </DropdownMenuItem>
+                    </DropdownMenuItem> */}
                     <DropdownMenuItem onClick={() => onEdit(truck)}>
                       <Edit3 className="mr-2 h-4 w-4" /> Edit
                     </DropdownMenuItem>
@@ -109,12 +162,7 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
       </TableBody>
     </Table>
     </div>
+    </TooltipProvider>
   );
 }
 
-// Helper function to make cn available if not globally imported in this file scope
-// (already in lib/utils, but good practice for component self-containment if needed)
-function cn(...inputs: any[]) {
-  // Simplified version for brevity; in real use, import from '@/lib/utils'
-  return inputs.filter(Boolean).join(' ');
-}

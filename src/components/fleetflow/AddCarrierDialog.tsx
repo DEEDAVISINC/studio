@@ -1,3 +1,4 @@
+
 "use client";
 import { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,6 +25,9 @@ const carrierSchema = z.object({
   contactEmail: z.string().email({ message: "Invalid email address." }),
   contactPhone: z.string().min(10, { message: "Phone number must be at least 10 digits." }).regex(/^\S*$/, "Phone number should not contain spaces."),
   contractDetails: z.string().min(10, { message: "Contract details must be at least 10 characters." }),
+  mcNumber: z.string().optional(),
+  usDotNumber: z.string().optional(),
+  availabilityNotes: z.string().optional(),
 });
 
 type CarrierFormData = z.infer<typeof carrierSchema>;
@@ -45,6 +49,9 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
       contactEmail: '',
       contactPhone: '',
       contractDetails: '',
+      mcNumber: '',
+      usDotNumber: '',
+      availabilityNotes: '',
     },
   });
 
@@ -58,6 +65,9 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
         contactEmail: '',
         contactPhone: '',
         contractDetails: '',
+        mcNumber: '',
+        usDotNumber: '',
+        availabilityNotes: '',
       });
     }
   }, [carrierToEdit, form, isOpen]);
@@ -65,8 +75,8 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
   const onSubmit = (data: CarrierFormData) => {
     onAddCarrier(data);
     toast({
-      title: "Carrier Added",
-      description: `Carrier "${data.name}" has been successfully added.`,
+      title: carrierToEdit ? "Carrier Updated" : "Carrier Added",
+      description: `Carrier "${data.name}" has been successfully ${carrierToEdit ? 'updated' : 'added'}.`,
     });
     form.reset();
     onOpenChange(false);
@@ -104,10 +114,24 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
               {form.formState.errors.contactPhone && <p className="text-sm text-destructive mt-1">{form.formState.errors.contactPhone.message}</p>}
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="mcNumber" className="text-foreground">MC Number</Label>
+              <Input id="mcNumber" {...form.register("mcNumber")} className="mt-1 bg-background border-border focus:ring-primary" />
+            </div>
+            <div>
+              <Label htmlFor="usDotNumber" className="text-foreground">US DOT Number</Label>
+              <Input id="usDotNumber" {...form.register("usDotNumber")} className="mt-1 bg-background border-border focus:ring-primary" />
+            </div>
+          </div>
           <div>
             <Label htmlFor="contractDetails" className="text-foreground">Contract Details</Label>
             <Textarea id="contractDetails" {...form.register("contractDetails")} className="mt-1 bg-background border-border focus:ring-primary" rows={3} />
             {form.formState.errors.contractDetails && <p className="text-sm text-destructive mt-1">{form.formState.errors.contractDetails.message}</p>}
+          </div>
+          <div>
+            <Label htmlFor="availabilityNotes" className="text-foreground">Availability Notes</Label>
+            <Textarea id="availabilityNotes" {...form.register("availabilityNotes")} className="mt-1 bg-background border-border focus:ring-primary" rows={2} placeholder="e.g., Preferred lanes, operating hours, blackout dates" />
           </div>
           <DialogFooter className="pt-4 sticky bottom-0 bg-card pb-1">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

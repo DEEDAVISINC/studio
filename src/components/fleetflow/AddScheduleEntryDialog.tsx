@@ -20,9 +20,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { ScheduleEntry, Truck, Driver } from "@/lib/types";
+import type { ScheduleEntry, Truck, Driver, ScheduleType } from "@/lib/types";
+import { SCHEDULE_TYPES } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarIcon, DollarSign } from 'lucide-react';
+import { CalendarIcon, DollarSign, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const scheduleEntrySchema = z.object({
@@ -36,6 +37,7 @@ const scheduleEntrySchema = z.object({
   loadValue: z.coerce.number().positive({ message: "Load value must be a positive amount." }).optional(),
   notes: z.string().optional(),
   color: z.string().optional(),
+  scheduleType: z.enum(SCHEDULE_TYPES).default('Delivery'),
 }).refine(data => data.end >= data.start, {
   message: "End date cannot be before start date.",
   path: ["end"],
@@ -77,6 +79,7 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
       loadValue: undefined,
       notes: '',
       color: colorOptions[0].value,
+      scheduleType: 'Delivery',
     },
   });
 
@@ -84,7 +87,8 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
     if (entryToEdit) {
       form.reset({
         ...entryToEdit,
-        loadValue: entryToEdit.loadValue ?? undefined, // Ensure undefined if null/0 not allowed by positive()
+        loadValue: entryToEdit.loadValue ?? undefined, 
+        scheduleType: entryToEdit.scheduleType || 'Delivery',
       });
     } else {
       form.reset({
@@ -98,6 +102,7 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
         loadValue: undefined,
         notes: '',
         color: colorOptions[0].value,
+        scheduleType: 'Delivery',
       });
     }
   }, [entryToEdit, form, isOpen]);
@@ -105,8 +110,8 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
   const onSubmit = (data: ScheduleEntryFormData) => {
     onAddScheduleEntry(data);
     toast({
-      title: "Schedule Entry Added",
-      description: `Entry "${data.title}" has been successfully added.`,
+      title: entryToEdit ? "Schedule Entry Updated" : "Schedule Entry Added",
+      description: `Entry "${data.title}" has been successfully ${entryToEdit ? 'updated' : 'added'}.`,
     });
     form.reset();
     onOpenChange(false);
@@ -129,6 +134,21 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
           </div>
 
           <div className="grid grid-cols-2 gap-3">
+             <div>
+                <Label htmlFor="scheduleType" className="text-foreground">Schedule Type</Label>
+                <Select onValueChange={(value: ScheduleType) => form.setValue("scheduleType", value)} defaultValue={form.getValues("scheduleType")}>
+                <SelectTrigger id="scheduleType" className="mt-1 bg-background border-border focus:ring-primary">
+                    <div className="flex items-center gap-2">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <SelectValue placeholder="Select type" />
+                    </div>
+                </SelectTrigger>
+                <SelectContent>
+                    {SCHEDULE_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                </SelectContent>
+                </Select>
+                {form.formState.errors.scheduleType && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.scheduleType.message}</p>}
+            </div>
             <div>
               <Label htmlFor="truckId" className="text-foreground">Truck</Label>
               <Select onValueChange={(value) => form.setValue("truckId", value)} defaultValue={form.getValues("truckId")}>
@@ -141,6 +161,9 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
               </Select>
               {form.formState.errors.truckId && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.truckId.message}</p>}
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="driverId" className="text-foreground">Driver (Optional)</Label>
               <Select onValueChange={(value) => form.setValue("driverId", value)} defaultValue={form.getValues("driverId")}>
@@ -153,7 +176,26 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
                 </SelectContent>
               </Select>
             </div>
+            <div>
+                <Label htmlFor="color" className="text-foreground">Event Color</Label>
+                <Select onValueChange={(value) => form.setValue("color", value)} defaultValue={form.getValues("color")}>
+                <SelectTrigger id="color" className="mt-1 bg-background border-border focus:ring-primary">
+                    <SelectValue placeholder="Select color" />
+                </SelectTrigger>
+                <SelectContent>
+                    {colorOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                        <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 rounded-full" style={{ backgroundColor: opt.value }}></div>
+                        {opt.label}
+                        </div>
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+            </div>
           </div>
+
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -225,33 +267,13 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-                <Label htmlFor="loadValue" className="text-foreground">Load Value (Optional)</Label>
-                <div className="relative mt-1">
-                    <DollarSign className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input id="loadValue" type="number" step="0.01" {...form.register("loadValue")} className="pl-7 bg-background border-border focus:ring-primary" placeholder="e.g., 1500.00"/>
-                </div>
-                {form.formState.errors.loadValue && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.loadValue.message}</p>}
+          <div>
+            <Label htmlFor="loadValue" className="text-foreground">Load Value (Optional)</Label>
+            <div className="relative mt-1">
+                <DollarSign className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input id="loadValue" type="number" step="0.01" {...form.register("loadValue")} className="pl-7 bg-background border-border focus:ring-primary" placeholder="e.g., 1500.00"/>
             </div>
-            <div>
-                <Label htmlFor="color" className="text-foreground">Event Color</Label>
-                <Select onValueChange={(value) => form.setValue("color", value)} defaultValue={form.getValues("color")}>
-                <SelectTrigger id="color" className="mt-1 bg-background border-border focus:ring-primary">
-                    <SelectValue placeholder="Select color" />
-                </SelectTrigger>
-                <SelectContent>
-                    {colorOptions.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                        <div className="flex items-center gap-2">
-                        <div className="h-4 w-4 rounded-full" style={{ backgroundColor: opt.value }}></div>
-                        {opt.label}
-                        </div>
-                    </SelectItem>
-                    ))}
-                </SelectContent>
-                </Select>
-            </div>
+            {form.formState.errors.loadValue && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.loadValue.message}</p>}
           </div>
 
 

@@ -8,6 +8,9 @@ export interface Truck {
   carrierId: string;
   driverId?: string; // Driver can be unassigned
   maintenanceStatus: 'Good' | 'Needs Service' | 'In Service';
+  mc150DueDate?: Date | string; // Added
+  permitExpiryDate?: Date | string; // Added
+  taxDueDate?: Date | string; // Added
 }
 
 export interface Driver {
@@ -25,7 +28,13 @@ export interface Carrier {
   contactEmail: string;
   contactPhone: string;
   contractDetails: string;
+  mcNumber?: string; // Added
+  usDotNumber?: string; // Added
+  availabilityNotes?: string; // Added
 }
+
+export type ScheduleType = 'Delivery' | 'Maintenance' | 'Pickup' | 'Other'; // Added
+export const SCHEDULE_TYPES: ScheduleType[] = ['Delivery', 'Maintenance', 'Pickup', 'Other']; // Added
 
 export interface ScheduleEntry {
   id: string;
@@ -36,9 +45,10 @@ export interface ScheduleEntry {
   end: Date;
   destination: string;
   origin: string;
-  loadValue?: number; // Added load value
+  loadValue?: number;
   notes?: string;
   color?: string; // For calendar event styling
+  scheduleType?: ScheduleType; // Added
 }
 
 // For AI Route Optimization Form
@@ -57,7 +67,7 @@ export interface ItemToLoad {
 }
 
 export interface AvailableTruckForLoad {
-  truckId: string;
+  truckId:string;
   capacityWeight: number;
   capacityVolume: number;
   currentLocation: string;

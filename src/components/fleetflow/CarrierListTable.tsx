@@ -1,3 +1,4 @@
+
 "use client";
 import type { Carrier } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -24,9 +25,9 @@ export function CarrierListTable({ carriers, onEdit, onDelete }: CarrierListTabl
         <TableRow>
           <TableHead>Name</TableHead>
           <TableHead>Contact Person</TableHead>
-          <TableHead>Contact Email</TableHead>
-          <TableHead>Contact Phone</TableHead>
-          <TableHead>Contract Details</TableHead>
+          <TableHead>MC#</TableHead>
+          <TableHead>US DOT#</TableHead>
+          <TableHead>Availability</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -35,9 +36,9 @@ export function CarrierListTable({ carriers, onEdit, onDelete }: CarrierListTabl
           <TableRow key={carrier.id}>
             <TableCell className="font-medium">{carrier.name}</TableCell>
             <TableCell>{carrier.contactPerson}</TableCell>
-            <TableCell>{carrier.contactEmail}</TableCell>
-            <TableCell>{carrier.contactPhone}</TableCell>
-            <TableCell className="max-w-xs truncate">{carrier.contractDetails}</TableCell>
+            <TableCell>{carrier.mcNumber || 'N/A'}</TableCell>
+            <TableCell>{carrier.usDotNumber || 'N/A'}</TableCell>
+            <TableCell className="max-w-xs truncate">{carrier.availabilityNotes || 'N/A'}</TableCell>
             <TableCell className="text-right">
               <AlertDialog>
                 <DropdownMenu>
@@ -48,9 +49,9 @@ export function CarrierListTable({ carriers, onEdit, onDelete }: CarrierListTabl
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => console.log("View carrier:", carrier)}>
-                       <Eye className="mr-2 h-4 w-4" /> View Details
-                    </DropdownMenuItem>
+                    {/* <DropdownMenuItem onClick={() => console.log("View carrier:", carrier)}>
+                       <Eye className="mr-2 h-4 w-4" /> View Details (Full)
+                    </DropdownMenuItem> */}
                     <DropdownMenuItem onClick={() => onEdit(carrier)}>
                        <Edit3 className="mr-2 h-4 w-4" /> Edit
                     </DropdownMenuItem>
