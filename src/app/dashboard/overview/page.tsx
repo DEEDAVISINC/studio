@@ -1,17 +1,33 @@
+
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppData } from "@/contexts/AppDataContext";
 import { BarChart, Users, CalendarCheck, Truck as TruckIcon } from "lucide-react";
 import Image from "next/image";
+import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 
 export default function OverviewPage() {
   const { trucks, drivers, carriers, scheduleEntries } = useAppData();
+  const [upcomingSchedulesCount, setUpcomingSchedulesCount] = useState(0);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    // This effect runs only on the client, after the component has mounted.
+    setHasMounted(true);
+    const now = new Date();
+    // Ensure s.start is treated as a Date object before comparison
+    const count = scheduleEntries.filter(s => new Date(s.start) > now).length;
+    setUpcomingSchedulesCount(count);
+  }, [scheduleEntries]); // Re-calculate if scheduleEntries changes
 
   const stats = [
     { title: "Total Trucks", value: trucks.length, icon: TruckIcon, color: "text-primary" },
     { title: "Active Drivers", value: drivers.length, icon: Users, color: "text-blue-500" },
     { title: "Registered Carriers", value: carriers.length, icon: BarChart, color: "text-purple-500" },
-    { title: "Upcoming Schedules", value: scheduleEntries.filter(s => s.start > new Date()).length, icon: CalendarCheck, color: "text-green-500" },
+    // Display 0 or a placeholder for "Upcoming Schedules" during SSR or before client-side calculation.
+    // Once hasMounted is true, the client-calculated value will be shown.
+    { title: "Upcoming Schedules", value: hasMounted ? upcomingSchedulesCount : 0, icon: CalendarCheck, color: "text-green-500" },
   ];
 
   return (
@@ -29,7 +45,6 @@ export default function OverviewPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-foreground">{stat.value}</div>
-              {/* <p className="text-xs text-muted-foreground">+20.1% from last month</p> */}
             </CardContent>
           </Card>
         ))}
@@ -43,18 +58,30 @@ export default function OverviewPage() {
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
-              {scheduleEntries.slice(0, 3).map(entry => (
-                 <li key={entry.id} className="flex items-center space-x-3 p-2 bg-muted/50 rounded-md">
-                    <CalendarCheck className="h-5 w-5 text-primary" />
-                    <div>
-                        <p className="font-medium text-sm text-foreground">{entry.title} for Truck ID: {entry.truckId}</p>
-                        <p className="text-xs text-muted-foreground">
-                            {new Date(entry.start).toLocaleDateString()} - {new Date(entry.end).toLocaleDateString()}
-                        </p>
-                    </div>
-                 </li>
-              ))}
-               {scheduleEntries.length === 0 && <p className="text-muted-foreground">No recent activity.</p>}
+              {!hasMounted ? (
+                // Placeholder shown during SSR and initial client render before useEffect runs
+                <p className="text-muted-foreground">Loading activities...</p>
+              ) : scheduleEntries.length === 0 ? (
+                <p className="text-muted-foreground">No recent activity.</p>
+              ) : (
+                // scheduleEntries.slice should be safe now that initial data is stable.
+                // Sort by start date descending to show most recent first, then slice.
+                scheduleEntries
+                  .sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime())
+                  .slice(0, 3)
+                  .map(entry => (
+                   <li key={entry.id} className="flex items-center space-x-3 p-2 bg-muted/50 rounded-md">
+                      <CalendarCheck className="h-5 w-5 text-primary" />
+                      <div>
+                          <p className="font-medium text-sm text-foreground">{entry.title} for Truck ID: {entry.truckId}</p>
+                          <p className="text-xs text-muted-foreground">
+                              {/* Use date-fns format for consistent date string output */}
+                              {format(new Date(entry.start), 'MM/dd/yyyy')} - {format(new Date(entry.end), 'MM/dd/yyyy')}
+                          </p>
+                      </div>
+                   </li>
+                  ))
+              )}
             </ul>
           </CardContent>
         </Card>
