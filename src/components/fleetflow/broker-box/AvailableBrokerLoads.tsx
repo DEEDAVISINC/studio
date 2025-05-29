@@ -1,0 +1,194 @@
+
+"use client";
+import { useState } from 'react';
+import type { BrokerLoad, Shipper, Carrier, Truck, Driver } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from '@/components/ui/label';
+import { ThumbsUp, MapPin, CalendarDays, TruckIcon as EqIcon, DollarSign, ClipboardList, UserCheck, AlertTriangle } from "lucide-react";
+import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from '@/components/ui/badge';
+
+interface AvailableBrokerLoadsProps {
+  brokerLoads: BrokerLoad[]; // Should already be filtered for 'Available' status
+  carriers: Carrier[]; // All carriers in the system
+  trucks: Truck[]; // All trucks in the system
+  drivers: Driver[]; // All drivers in the system
+  onAcceptLoad: (loadId: string, carrierId: string, truckId: string, driverId?: string) => BrokerLoad | undefined;
+  getShipperById: (id: string) => Shipper | undefined;
+}
+
+export function AvailableBrokerLoads({
+  brokerLoads,
+  carriers,
+  trucks,
+  drivers,
+  onAcceptLoad,
+  getShipperById
+}: AvailableBrokerLoadsProps) {
+  const { toast } = useToast();
+  const [selectedLoadToAccept, setSelectedLoadToAccept] = useState<BrokerLoad | null>(null);
+  const [selectedCarrierId, setSelectedCarrierId] = useState<string>('');
+  const [selectedTruckId, setSelectedTruckId] = useState<string>('');
+  const [selectedDriverId, setSelectedDriverId] = useState<string>(''); // Optional
+
+  const availableTrucksForSelectedCarrier = trucks.filter(t => t.carrierId === selectedCarrierId && t.maintenanceStatus === 'Good');
+  const availableDriversForSelectedCarrier = drivers.filter(d => {
+    // A driver is available if they are not currently assigned to a truck OR if their assigned truck belongs to the selected carrier
+    // This logic might need refinement based on how driver assignment to trucks works
+    const truckTheyDrive = trucks.find(t => t.driverId === d.id);
+    return !truckTheyDrive || truckTheyDrive.carrierId === selectedCarrierId;
+  });
+
+
+  const handleAcceptLoad = () => {
+    if (!selectedLoadToAccept || !selectedCarrierId || !selectedTruckId) {
+      toast({ title: "Missing Information", description: "Please select a carrier and a truck.", variant: "destructive" });
+      return;
+    }
+    const acceptedLoad = onAcceptLoad(selectedLoadToAccept.id, selectedCarrierId, selectedTruckId, selectedDriverId || undefined);
+    if (acceptedLoad) {
+        toast({ title: "Load Accepted!", description: `Load ${acceptedLoad.commodity} assigned to Carrier ID ${selectedCarrierId}. A schedule entry has been created.` });
+        setSelectedLoadToAccept(null); // Close dialog
+        setSelectedCarrierId('');
+        setSelectedTruckId('');
+        setSelectedDriverId('');
+    } else {
+        toast({ title: "Acceptance Failed", description: "Could not accept the load. It might no longer be available or truck is invalid.", variant: "destructive" });
+    }
+  };
+  
+  const copyLoadInfoToClipboard = (load: BrokerLoad) => {
+    const shipper = getShipperById(load.shipperId);
+    const loadDetails = `
+AVAILABLE LOAD:
+Commodity: ${load.commodity}
+Origin: ${load.originAddress}
+Destination: ${load.destinationAddress}
+Pickup: ${format(new Date(load.pickupDate), 'PPP p')}
+Delivery: ${format(new Date(load.deliveryDate), 'PPP p')}
+Equipment: ${load.equipmentType}
+Rate: $${load.offeredRate.toLocaleString()}
+${load.weight ? `Weight: ${load.weight} lbs\n` : ''}${load.dims ? `Dims: ${load.dims}\n` : ''}
+Shipper: ${shipper?.name || 'N/A'}
+Broker Notes: ${load.notes || 'N/A'}
+Load ID: ${load.id}
+    `.trim();
+    navigator.clipboard.writeText(loadDetails)
+      .then(() => toast({ title: "Load Info Copied!" }))
+      .catch(err => toast({ title: "Copy Failed", variant: "destructive" }));
+  };
+
+
+  if (brokerLoads.length === 0) {
+    return (
+      <div className="text-center py-10">
+        <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground" />
+        <p className="mt-4 text-lg font-medium text-muted-foreground">No available loads at the moment.</p>
+        <p className="text-sm text-muted-foreground">Check back later or contact brokers directly.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {brokerLoads.map(load => {
+        const shipper = getShipperById(load.shipperId);
+        return (
+          <Card key={load.id} className="shadow-lg hover:shadow-xl transition-shadow flex flex-col">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <CardTitle className="text-lg text-primary">{load.commodity}</CardTitle>
+                <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white">Available</Badge>
+              </div>
+              <CardDescription>Shipper: {shipper?.name || 'N/A'}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm flex-grow">
+              <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /> <span>{load.originAddress} to {load.destinationAddress}</span></div>
+              <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-muted-foreground" /> PU: {format(new Date(load.pickupDate), 'MMM d, p')} / DEL: {format(new Date(load.deliveryDate), 'MMM d, p')}</div>
+              <div className="flex items-center gap-2"><EqIcon className="h-4 w-4 text-muted-foreground" /> {load.equipmentType}</div>
+              <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-muted-foreground" /> <span className="font-semibold text-lg">${load.offeredRate.toLocaleString()}</span></div>
+              {load.weight && <p className="text-xs text-muted-foreground">Weight: {load.weight} lbs</p>}
+              {load.notes && <p className="text-xs text-muted-foreground">Notes: {load.notes}</p>}
+            </CardContent>
+            <CardFooter className="border-t pt-4 flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => copyLoadInfoToClipboard(load)}>
+                <ClipboardList className="mr-2 h-4 w-4" /> Copy Info
+              </Button>
+              <Dialog open={selectedLoadToAccept?.id === load.id} onOpenChange={(isOpen) => {
+                if (!isOpen) setSelectedLoadToAccept(null);
+                else setSelectedLoadToAccept(load);
+              }}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground flex-grow" onClick={() => setSelectedLoadToAccept(load)}>
+                    <ThumbsUp className="mr-2 h-4 w-4" /> Accept Load
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Accept Load: {load.commodity}</DialogTitle>
+                    <DialogDescription>Assign this load to one of your carriers/trucks.</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div>
+                      <Label htmlFor="carrierSelect">Your Carrier Company</Label>
+                      <Select value={selectedCarrierId} onValueChange={setSelectedCarrierId}>
+                        <SelectTrigger id="carrierSelect" className="mt-1 bg-background border-border">
+                          <SelectValue placeholder="Select your carrier company" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {carriers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {selectedCarrierId && (
+                    <>
+                        <div>
+                            <Label htmlFor="truckSelect">Assign Truck</Label>
+                            <Select value={selectedTruckId} onValueChange={setSelectedTruckId} disabled={availableTrucksForSelectedCarrier.length === 0}>
+                            <SelectTrigger id="truckSelect" className="mt-1 bg-background border-border">
+                                <SelectValue placeholder={availableTrucksForSelectedCarrier.length > 0 ? "Select available truck" : "No trucks available for this carrier"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableTrucksForSelectedCarrier.map(t => <SelectItem key={t.id} value={t.id}>{t.name} ({t.licensePlate})</SelectItem>)}
+                            </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label htmlFor="driverSelect">Assign Driver (Optional)</Label>
+                            <Select value={selectedDriverId} onValueChange={setSelectedDriverId} disabled={availableDriversForSelectedCarrier.length === 0}>
+                            <SelectTrigger id="driverSelect" className="mt-1 bg-background border-border">
+                                <SelectValue placeholder={availableDriversForSelectedCarrier.length > 0 ? "Select available driver" : "No drivers available"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="">Unassigned</SelectItem>
+                                {availableDriversForSelectedCarrier.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                            </SelectContent>
+                            </Select>
+                        </div>
+                    </>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setSelectedLoadToAccept(null)}>Cancel</Button>
+                    <Button 
+                        type="button" 
+                        onClick={handleAcceptLoad} 
+                        disabled={!selectedCarrierId || !selectedTruckId || !selectedLoadToAccept}
+                        className="bg-primary hover:bg-primary/90"
+                    >
+                      <UserCheck className="mr-2 h-4 w-4" /> Confirm & Assign
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardFooter>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}

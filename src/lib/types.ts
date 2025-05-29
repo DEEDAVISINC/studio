@@ -49,6 +49,7 @@ export interface ScheduleEntry {
   notes?: string;
   color?: string; // For calendar event styling
   scheduleType?: ScheduleType; 
+  brokerLoadId?: string; // Link to BrokerLoad if created from Broker Box
 }
 
 // For AI Route Optimization Form
@@ -95,4 +96,57 @@ export interface Invoice {
   dispatchFeeRecordIds: string[]; // IDs of DispatchFeeRecords included
   totalAmount: number;
   status: 'Draft' | 'Sent' | 'Paid' | 'Void';
+}
+
+// Broker Box Types
+export interface Shipper {
+  id: string;
+  name: string;
+  contactPerson: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  notes?: string;
+}
+
+export type BrokerLoadStatus = 'Available' | 'Booked' | 'In Transit' | 'Delivered' | 'Cancelled';
+export const BROKER_LOAD_STATUSES: BrokerLoadStatus[] = ['Available', 'Booked', 'In Transit', 'Delivered', 'Cancelled'];
+
+export interface BrokerLoad {
+  id: string;
+  shipperId: string;
+  postedByBrokerId: string; // In a real app, this would be the logged-in broker's ID
+  postedDate: Date;
+  
+  originAddress: string;
+  destinationAddress: string;
+  pickupDate: Date; // Could be a string or Date, ensure consistent handling
+  deliveryDate: Date; // Could be a string or Date
+
+  commodity: string;
+  weight?: number; // e.g., in lbs or kg
+  dims?: string; // e.g., "40ft L x 8ft W x 8ft H"
+  equipmentType: string; // e.g., "Van", "Reefer", "Flatbed"
+  
+  offeredRate: number;
+  notes?: string;
+
+  status: BrokerLoadStatus;
+  assignedCarrierId?: string;
+  assignedTruckId?: string;
+  assignedDriverId?: string; // Optional, could be assigned by carrier
+  confirmationNumber?: string; // Provided by carrier or system
+}
+
+export type LoadDocumentType = 'BOL' | 'POD' | 'Rate Confirmation' | 'Other';
+export const LOAD_DOCUMENT_TYPES: LoadDocumentType[] = ['BOL', 'POD', 'Rate Confirmation', 'Other'];
+
+export interface LoadDocument {
+  id: string;
+  brokerLoadId: string;
+  documentName: string;
+  documentType: LoadDocumentType;
+  uploadDate: Date;
+  fileUrl?: string; // Placeholder for actual file path/URL
+  uploadedBy: string; // Could be broker or carrier ID
 }

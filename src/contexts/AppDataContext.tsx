@@ -2,7 +2,7 @@
 "use client";
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback } from 'react';
-import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice } from '@/lib/types';
+import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus } from '@/lib/types';
 import { addDays } from 'date-fns';
 
 
@@ -13,6 +13,9 @@ interface AppDataContextType {
   scheduleEntries: ScheduleEntry[];
   dispatchFeeRecords: DispatchFeeRecord[];
   invoices: Invoice[];
+  shippers: Shipper[];
+  brokerLoads: BrokerLoad[];
+  loadDocuments: LoadDocument[];
   
   addTruck: (truck: Omit<Truck, 'id'>) => void;
   updateTruck: (truck: Truck) => void;
@@ -26,7 +29,7 @@ interface AppDataContextType {
   updateCarrier: (carrier: Carrier) => void;
   removeCarrier: (carrierId: string) => void;
   
-  addScheduleEntry: (entry: Omit<ScheduleEntry, 'id'>) => void;
+  addScheduleEntry: (entry: Omit<ScheduleEntry, 'id'>) => ScheduleEntry;
   updateScheduleEntry: (entry: ScheduleEntry) => void;
   removeScheduleEntry: (entryId: string) => void;
 
@@ -36,10 +39,25 @@ interface AppDataContextType {
   createInvoiceForCarrier: (carrierId: string, feeRecordIds: string[]) => Invoice | undefined;
   updateInvoiceStatus: (invoiceId: string, newStatus: Invoice['status']) => void;
 
+  addShipper: (shipper: Omit<Shipper, 'id'>) => void;
+  updateShipper: (shipper: Shipper) => void;
+  removeShipper: (shipperId: string) => void;
+
+  addBrokerLoad: (load: Omit<BrokerLoad, 'id' | 'postedDate' | 'status' | 'postedByBrokerId'>) => BrokerLoad;
+  updateBrokerLoad: (load: BrokerLoad) => void;
+  updateBrokerLoadStatus: (loadId: string, status: BrokerLoadStatus, carrierId?: string, truckId?: string, driverId?: string) => void;
+  assignLoadToCarrierAndCreateSchedule: (loadId: string, carrierId: string, truckId: string, driverId?: string) => BrokerLoad | undefined;
+
+
+  addLoadDocument: (doc: Omit<LoadDocument, 'id' | 'uploadDate'>) => void;
+
+
   getTruckById: (truckId: string) => Truck | undefined;
   getDriverById: (driverId: string) => Driver | undefined;
   getCarrierById: (carrierId: string) => Carrier | undefined;
   getScheduleEntryById: (scheduleEntryId: string) => ScheduleEntry | undefined;
+  getShipperById: (shipperId: string) => Shipper | undefined;
+  getBrokerLoadById: (loadId: string) => BrokerLoad | undefined;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -68,6 +86,28 @@ const initialScheduleEntries: ScheduleEntry[] = [
   { id: 'sch5', truckId: 'truck3', driverId: 'driver1', title: 'Local Delivery', start: new Date('2025-08-01T09:00:00Z'), end: new Date('2025-08-01T15:00:00Z'), origin: 'Warehouse A', destination: 'Customer Site B', loadValue: 750.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery' },
 ];
 
+const initialShippers: Shipper[] = [
+    { id: 'shipper1', name: 'Global Goods Co.', contactPerson: 'Alice Wonderland', contactEmail: 'alice@ggc.com', contactPhone: '555-1111', address: '123 Commerce St, Anytown, USA', notes: 'Prefers morning pickups.'},
+    { id: 'shipper2', name: 'Local Produce Inc.', contactPerson: 'Bob The Builder', contactEmail: 'bob@lpi.com', contactPhone: '555-2222', address: '456 Farm Rd, Countryside, USA', notes: 'Requires reefer trucks.'},
+];
+
+const initialBrokerLoads: BrokerLoad[] = [
+    {
+        id: 'bload1', shipperId: 'shipper1', postedByBrokerId: 'brokerUser1', postedDate: new Date('2025-07-15T09:00:00Z'),
+        originAddress: '123 Commerce St, Anytown, USA', destinationAddress: '789 Market Ave, Otherville, USA',
+        pickupDate: new Date('2025-07-20T10:00:00Z'), deliveryDate: new Date('2025-07-21T17:00:00Z'),
+        commodity: 'General Electronics', weight: 22000, equipmentType: '53ft Dry Van', offeredRate: 1800,
+        status: 'Available', notes: 'Team driving preferred for quick delivery.'
+    },
+    {
+        id: 'bload2', shipperId: 'shipper2', postedByBrokerId: 'brokerUser1', postedDate: new Date('2025-07-16T11:00:00Z'),
+        originAddress: '456 Farm Rd, Countryside, USA', destinationAddress: '321 Distribution Way, Bigcity, USA',
+        pickupDate: new Date('2025-07-22T08:00:00Z'), deliveryDate: new Date('2025-07-22T14:00:00Z'),
+        commodity: 'Fresh Strawberries', weight: 18000, equipmentType: 'Reefer (-10C)', offeredRate: 2200,
+        status: 'Available', notes: 'Temperature must be monitored.'
+    }
+];
+
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const [trucks, setTrucks] = useState<Truck[]>(initialTrucks);
@@ -76,6 +116,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>(initialScheduleEntries);
   const [dispatchFeeRecords, setDispatchFeeRecords] = useState<DispatchFeeRecord[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [shippers, setShippers] = useState<Shipper[]>(initialShippers);
+  const [brokerLoads, setBrokerLoads] = useState<BrokerLoad[]>(initialBrokerLoads);
+  const [loadDocuments, setLoadDocuments] = useState<LoadDocument[]>([]);
+
 
   const addTruck = useCallback((truck: Omit<Truck, 'id'>) => {
     setTrucks(prev => [...prev, { ...truck, id: `truck${Date.now()}` }]);
@@ -110,8 +154,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setCarriers(prev => prev.filter(c => c.id !== carrierId));
   }, []);
   
-  const addScheduleEntry = useCallback((entry: Omit<ScheduleEntry, 'id'>) => {
-    setScheduleEntries(prev => [...prev, { ...entry, id: `sch${Date.now()}` }]);
+  const addScheduleEntry = useCallback((entry: Omit<ScheduleEntry, 'id'>): ScheduleEntry => {
+    const newEntry = { ...entry, id: `sch${Date.now()}` };
+    setScheduleEntries(prev => [...prev, newEntry]);
+    return newEntry;
   }, []);
   const updateScheduleEntry = useCallback((updatedEntry: ScheduleEntry) => {
     setScheduleEntries(prev => prev.map(s => s.id === updatedEntry.id ? updatedEntry : s));
@@ -149,7 +195,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const newInvoiceId = `inv${Date.now()}`;
     const currentDate = new Date();
     
-    // Simple invoice number generation
     const year = currentDate.getFullYear();
     const invCountForYear = invoices.filter(inv => new Date(inv.invoiceDate).getFullYear() === year).length + 1;
     const invoiceNumber = `INV-${year}-${String(invCountForYear).padStart(3, '0')}`;
@@ -159,7 +204,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       invoiceNumber,
       carrierId,
       invoiceDate: currentDate,
-      dueDate: addDays(currentDate, 30), // Example: Due in 30 days
+      dueDate: addDays(currentDate, 30), 
       dispatchFeeRecordIds: recordsToInvoice.map(rec => rec.id),
       totalAmount,
       status: 'Draft',
@@ -175,23 +220,119 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setInvoices(prev => prev.map(inv => inv.id === invoiceId ? { ...inv, status: newStatus } : inv));
   }, []);
 
+  // Shipper CRUD
+  const addShipper = useCallback((shipper: Omit<Shipper, 'id'>) => {
+    setShippers(prev => [...prev, { ...shipper, id: `shipper${Date.now()}` }]);
+  }, []);
+  const updateShipper = useCallback((updatedShipper: Shipper) => {
+    setShippers(prev => prev.map(s => s.id === updatedShipper.id ? updatedShipper : s));
+  }, []);
+  const removeShipper = useCallback((shipperId: string) => {
+    setShippers(prev => prev.filter(s => s.id !== shipperId));
+    // Optionally, handle related broker loads (e.g., disassociate or delete)
+  }, []);
+
+  // BrokerLoad CRUD
+  const addBrokerLoad = useCallback((load: Omit<BrokerLoad, 'id' | 'postedDate' | 'status' | 'postedByBrokerId'>): BrokerLoad => {
+    // In a real app, postedByBrokerId would come from the logged-in user
+    const newLoad = { ...load, id: `bload${Date.now()}`, postedDate: new Date(), status: 'Available' as BrokerLoadStatus, postedByBrokerId: 'brokerUser1' };
+    setBrokerLoads(prev => [newLoad, ...prev]);
+    return newLoad;
+  }, []);
+  const updateBrokerLoad = useCallback((updatedLoad: BrokerLoad) => {
+    setBrokerLoads(prev => prev.map(bl => bl.id === updatedLoad.id ? updatedLoad : bl));
+  }, []);
+
+  const updateBrokerLoadStatus = useCallback((loadId: string, status: BrokerLoadStatus, carrierId?: string, truckId?: string, driverId?: string) => {
+    setBrokerLoads(prev => prev.map(bl => {
+      if (bl.id === loadId) {
+        const updatedLoad = { ...bl, status };
+        if (carrierId) updatedLoad.assignedCarrierId = carrierId;
+        if (truckId) updatedLoad.assignedTruckId = truckId;
+        if (driverId) updatedLoad.assignedDriverId = driverId;
+        if (status === 'Booked' && !updatedLoad.confirmationNumber) {
+            updatedLoad.confirmationNumber = `CONF-${Date.now().toString().slice(-6)}`;
+        }
+        return updatedLoad;
+      }
+      return bl;
+    }));
+  }, []);
+  
+  const assignLoadToCarrierAndCreateSchedule = useCallback((loadId: string, carrierId: string, truckId: string, driverId?: string): BrokerLoad | undefined => {
+    const load = brokerLoads.find(bl => bl.id === loadId);
+    const truck = trucks.find(t => t.id === truckId && t.carrierId === carrierId);
+
+    if (load && truck && load.status === 'Available') {
+      const updatedLoad: BrokerLoad = {
+        ...load,
+        assignedCarrierId: carrierId,
+        assignedTruckId: truckId,
+        assignedDriverId: driverId,
+        status: 'Booked',
+        confirmationNumber: load.confirmationNumber || `CONF-${Date.now().toString().slice(-6)}`
+      };
+      updateBrokerLoad(updatedLoad);
+
+      // Auto-create ScheduleEntry
+      addScheduleEntry({
+        truckId: truckId,
+        driverId: driverId,
+        title: `Broker Load: ${load.commodity} (${load.originAddress} to ${load.destinationAddress})`,
+        start: new Date(load.pickupDate), // Ensure pickupDate is a Date object or parsable string
+        end: new Date(load.deliveryDate),   // Ensure deliveryDate is a Date object or parsable string
+        origin: load.originAddress,
+        destination: load.destinationAddress,
+        loadValue: load.offeredRate,
+        notes: `Broker Load ID: ${load.id}. Shipper: ${getShipperById(load.shipperId)?.name || 'N/A'}. Confirmation: ${updatedLoad.confirmationNumber}`,
+        scheduleType: 'Delivery', // Default to delivery
+        color: 'hsl(260, 80%, 60%)', // A distinct color for broker loads, e.g., purple
+        brokerLoadId: load.id,
+      });
+      return updatedLoad;
+    }
+    return undefined;
+  }, [brokerLoads, trucks, addScheduleEntry, updateBrokerLoad]);
+
+
+  // LoadDocument
+   const addLoadDocument = useCallback((doc: Omit<LoadDocument, 'id' | 'uploadDate'>) => {
+    // Simulate document upload
+    const newDocument: LoadDocument = {
+      ...doc,
+      id: `doc${Date.now()}`,
+      uploadDate: new Date(),
+      // In a real app, uploadedBy would be the current user's ID
+      // fileUrl would be set after actual file upload to a storage service
+      fileUrl: `simulated_path/to/${doc.documentName}`, 
+    };
+    setLoadDocuments(prev => [newDocument, ...prev]);
+  }, []);
+
 
   const getTruckById = useCallback((truckId: string) => trucks.find(t => t.id === truckId), [trucks]);
   const getDriverById = useCallback((driverId: string) => drivers.find(d => d.id === driverId), [drivers]);
   const getCarrierById = useCallback((carrierId: string) => carriers.find(c => c.id === carrierId), [carriers]);
   const getScheduleEntryById = useCallback((scheduleEntryId: string) => scheduleEntries.find(s => s.id === scheduleEntryId), [scheduleEntries]);
+  const getShipperById = useCallback((shipperId: string) => shippers.find(s => s.id === shipperId), [shippers]);
+  const getBrokerLoadById = useCallback((loadId: string) => brokerLoads.find(bl => bl.id === loadId), [brokerLoads]);
 
 
   return (
     <AppDataContext.Provider value={{
       trucks, drivers, carriers, scheduleEntries, dispatchFeeRecords, invoices,
+      shippers, brokerLoads, loadDocuments,
       addTruck, updateTruck, removeTruck,
       addDriver, updateDriver, removeDriver,
       addCarrier, updateCarrier, removeCarrier,
       addScheduleEntry, updateScheduleEntry, removeScheduleEntry,
       addDispatchFeeRecord, updateDispatchFeeRecordStatus,
       createInvoiceForCarrier, updateInvoiceStatus,
-      getTruckById, getDriverById, getCarrierById, getScheduleEntryById
+      addShipper, updateShipper, removeShipper,
+      addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule,
+      addLoadDocument,
+      getTruckById, getDriverById, getCarrierById, getScheduleEntryById,
+      getShipperById, getBrokerLoadById
     }}>
       {children}
     </AppDataContext.Provider>
