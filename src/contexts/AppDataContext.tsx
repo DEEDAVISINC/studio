@@ -68,9 +68,9 @@ interface AppDataContextType {
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
 const initialTrucks: Truck[] = [
-  { id: 'truck1', name: 'Alpha Hauler', licensePlate: 'TRK-001', model: 'Volvo VNL', year: 2022, carrierId: 'carrier1', driverId: 'driver1', maintenanceStatus: 'Good', mc150DueDate: parseISO('2025-06-15T00:00:00'), permitExpiryDate: parseISO('2024-12-31T00:00:00'), taxDueDate: parseISO('2024-09-30T00:00:00') },
-  { id: 'truck2', name: 'Beta Mover', licensePlate: 'TRK-002', model: 'Freightliner Cascadia', year: 2021, carrierId: 'carrier2', driverId: 'driver2', maintenanceStatus: 'Needs Service', mc150DueDate: parseISO('2025-08-01T00:00:00') },
-  { id: 'truck3', name: 'Gamma Transporter', licensePlate: 'TRK-003', model: 'Peterbilt 579', year: 2023, carrierId: 'carrier1', maintenanceStatus: 'In Service', permitExpiryDate: parseISO('2025-03-28T00:00:00') },
+  { id: 'truck1', name: 'Alpha Hauler', licensePlate: 'TRK-001', model: 'Volvo VNL', year: 2022, carrierId: 'carrier1', driverId: 'driver1', maintenanceStatus: 'Good', mc150DueDate: parseISO('2025-06-15T00:00:00.000Z'), permitExpiryDate: parseISO('2024-12-31T00:00:00.000Z'), taxDueDate: parseISO('2024-09-30T00:00:00.000Z') },
+  { id: 'truck2', name: 'Beta Mover', licensePlate: 'TRK-002', model: 'Freightliner Cascadia', year: 2021, carrierId: 'carrier2', driverId: 'driver2', maintenanceStatus: 'Needs Service', mc150DueDate: parseISO('2025-08-01T00:00:00.000Z') },
+  { id: 'truck3', name: 'Gamma Transporter', licensePlate: 'TRK-003', model: 'Peterbilt 579', year: 2023, carrierId: 'carrier1', maintenanceStatus: 'In Service', permitExpiryDate: parseISO('2025-03-28T00:00:00.000Z') },
 ];
 
 const initialDrivers: Driver[] = [
@@ -89,13 +89,21 @@ const initialCarriers: Carrier[] = [
     companyPhone: '555-0001',
     companyEmail: 'info@speedylog.com',
     physicalAddress: '123 Main St, Anytown, USA 12345',
+    mailingAddress: '123 Main St, Anytown, USA 12345',
+    isMailingSameAsPhysical: true,
     contactPerson: 'Mike Ross', 
     contactEmail: 'mike.ross@speedylog.com', 
     contactPhone: '555-0011', 
     equipmentTypes: '53ft Dry Van, Reefer',
     insuranceCompanyName: 'SecureTruck Insurance',
     insurancePolicyNumber: 'POL98765',
-    insurancePolicyExpirationDate: parseISO('2025-10-31T00:00:00'),
+    insurancePolicyExpirationDate: parseISO('2025-10-31T00:00:00.000Z'),
+    insuranceAgentName: 'Agent Smith',
+    insuranceAgentPhone: '555-AGENT1',
+    insuranceAgentEmail: 'agent.smith@secure.com',
+    factoringCompanyName: 'Funds Fast Inc.',
+    factoringCompanyContact: 'Fiona Money',
+    factoringCompanyPhone: '555-FACTOR',
     paymentTerms: 'Net 30',
     contractDetails: 'Primary Carrier Agreement, expires 2025-12-31', 
     availabilityNotes: 'Available Mon-Fri, national coverage.',
@@ -106,15 +114,23 @@ const initialCarriers: Carrier[] = [
     name: 'Reliable Transport Inc.', 
     mcNumber: 'MC654321', 
     usDotNumber: 'USDOT123789', 
+    taxIdEin: '98-7654321',
     companyPhone: '555-0002',
     companyEmail: 'contact@reliabletransport.com',
     physicalAddress: '456 Industrial Ave, Otherville, USA 67890',
+    mailingAddress: 'PO Box 100, Otherville, USA 67890',
+    isMailingSameAsPhysical: false,
     contactPerson: 'Sarah Connor', 
     contactEmail: 's.connor@reliabletransport.com', 
     contactPhone: '555-0022', 
     equipmentTypes: 'Flatbed, Power Only',
+    insuranceCompanyName: 'Truckers United Assurance',
+    insurancePolicyNumber: 'TUA001245',
+    insurancePolicyExpirationDate: parseISO('2024-11-30T00:00:00.000Z'),
+    paymentTerms: 'Net 15 (Quick Pay 2%)',
     contractDetails: 'Secondary Carrier, flexible terms', 
-    availabilityNotes: 'Weekend availability, regional only.' 
+    availabilityNotes: 'Weekend availability, regional only.',
+    preferredLanes: 'Midwest Region'
   },
 ];
 
@@ -227,6 +243,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       insurancePolicyExpirationDate: carrierData.insurancePolicyExpirationDate ? new Date(carrierData.insurancePolicyExpirationDate) : undefined,
     };
     setCarriers(prev => [...prev, newCarrier]);
+    
+    // Placeholder for email notification
+    console.log(`New carrier "${newCarrier.name}" (ID: ${newCarrier.id}) added. 
+    TODO: Send email notification to onboard@freight1stdirect.com with carrier details:
+    Name: ${newCarrier.name}
+    MC#: ${newCarrier.mcNumber || 'N/A'}
+    USDOT#: ${newCarrier.usDotNumber || 'N/A'}
+    Contact: ${newCarrier.contactPerson} (${newCarrier.contactEmail}, ${newCarrier.contactPhone})`);
+    // In a real app, replace the above console.log with an API call to your backend to send the email.
   }, []);
 
   const updateCarrier = useCallback((updatedCarrierData: Carrier) => {
