@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Filter } from "lucide-react";
 import { AddScheduleEntryDialog } from "@/components/fleetflow/AddScheduleEntryDialog";
-import { ScheduleCalendarView } from "@/components/fleetflow/ScheduleCalendarView";
+import { ScheduleCalendarView } from "@/components/fleetflow/ScheduleCalendarView"; // Renamed to reflect its new nature
 import { useAppData } from '@/contexts/AppDataContext';
 import type { ScheduleEntry, ScheduleType } from '@/lib/types';
 import {
@@ -16,13 +16,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SCHEDULE_TYPES } from "@/lib/types";
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { useToast } from '@/hooks/use-toast';
 
 export default function SchedulesPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ScheduleEntry | null>(null);
   const { scheduleEntries, addScheduleEntry, updateScheduleEntry, removeScheduleEntry, trucks, drivers } = useAppData();
-  const { toast } = useToast(); // Initialize useToast
+  const { toast } = useToast();
   const [typeFilters, setTypeFilters] = useState<Record<ScheduleType, boolean>>({
     Delivery: true,
     Maintenance: true,
@@ -38,13 +38,10 @@ export default function SchedulesPage() {
       result = addScheduleEntry(entryData as Omit<ScheduleEntry, 'id'>);
     }
     
-    // Toast for success is handled by the dialog now, based on the result
-    // Toast for failure (overlap) is handled by the context functions
-
-    if (result) { // Only reset and close if operation was successful
+    if (result) {
         setEditingEntry(null);
     }
-    return result; // Return the result so the dialog can decide to close
+    return result;
   };
 
   const openEditDialog = (entry: ScheduleEntry) => {
@@ -58,7 +55,7 @@ export default function SchedulesPage() {
   };
 
   const filteredScheduleEntries = scheduleEntries.filter(entry => 
-    typeFilters[entry.scheduleType || 'Other'] // Default to 'Other' if type is undefined
+    typeFilters[entry.scheduleType || 'Other']
   );
   
   const handleFilterChange = (type: ScheduleType) => {
@@ -67,15 +64,15 @@ export default function SchedulesPage() {
 
   return (
     <div className="space-y-6 h-full flex flex-col">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Truck Scheduler</h1>
-          <p className="text-muted-foreground">View and manage truck schedules in the calendar. Overlaps are prevented unless marked as partial load.</p>
+          <p className="text-muted-foreground">Weekly timeline view. Overlaps are prevented unless marked as partial load.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
             <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="flex-grow sm:flex-grow-0">
                 <Filter className="mr-2 h-4 w-4" /> Filter by Type
               </Button>
             </DropdownMenuTrigger>
@@ -93,13 +90,14 @@ export default function SchedulesPage() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={openAddDialog} className="bg-primary hover:bg-primary/90">
+          <Button onClick={openAddDialog} className="bg-primary hover:bg-primary/90 flex-grow sm:flex-grow-0">
             <PlusCircle className="mr-2 h-5 w-5" /> Add Schedule
           </Button>
         </div>
       </div>
 
-      <div className="flex-grow min-h-0">
+      {/* The ScheduleCalendarView will now manage its own height and scrolling */}
+      <div className="flex-grow min-h-[600px] md:min-h-0"> {/* Ensure it has enough space or can grow */}
         <ScheduleCalendarView 
           events={filteredScheduleEntries} 
           onEventClick={openEditDialog}
@@ -114,7 +112,7 @@ export default function SchedulesPage() {
             setIsAddDialogOpen(isOpen);
             if (!isOpen) setEditingEntry(null);
         }}
-        onAddScheduleEntry={handleAddOrUpdateEntry} // This now expects ScheduleEntry | null
+        onAddScheduleEntry={handleAddOrUpdateEntry}
         entryToEdit={editingEntry}
         trucks={trucks}
         drivers={drivers}

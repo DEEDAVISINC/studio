@@ -1,119 +1,142 @@
+
 "use client";
 import type { ScheduleEntry, Truck, Driver } from "@/lib/types";
-import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useMemo } from "react";
-import { format,isSameDay, parseISO } from 'date-fns';
-import { Button } from "../ui/button";
-import { ScrollArea } from "../ui/scroll-area";
+import { 
+  format, 
+  startOfWeek, 
+  endOfWeek, 
+  eachDayOfInterval, 
+  isWithinInterval, 
+  isSameDay, 
+  addWeeks, 
+  subWeeks 
+} from 'date-fns';
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ScheduleCalendarViewProps {
   events: ScheduleEntry[];
   onEventClick: (event: ScheduleEntry) => void;
   trucks: Truck[];
-  drivers: Driver[];
+  drivers: Driver[]; // Keep for potential future use in cell display, though not primary for grid structure
 }
 
 export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: ScheduleCalendarViewProps) {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
 
-  const getTruckName = (truckId: string) => trucks.find(t => t.id === truckId)?.name || 'Unknown Truck';
+  const weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1; // Monday
+
+  const currentWeekStart = startOfWeek(currentDate, { weekStartsOn });
+  const currentWeekEnd = endOfWeek(currentDate, { weekStartsOn });
+  const daysInWeek = eachDayOfInterval({ start: currentWeekStart, end: currentWeekEnd });
+
   const getDriverName = (driverId?: string) => driverId ? (drivers.find(d => d.id === driverId)?.name || 'Unassigned') : 'Unassigned';
 
-  const eventsByDate = useMemo(() => {
-    const groupedEvents: Record<string, ScheduleEntry[]> = {};
-    events.forEach(event => {
-      const dateKey = format(event.start, 'yyyy-MM-dd');
-      if (!groupedEvents[dateKey]) {
-        groupedEvents[dateKey] = [];
-      }
-      groupedEvents[dateKey].push(event);
+  const eventsByTruckAndDay = useMemo(() => {
+    const grouped: Record<string, Record<string, ScheduleEntry[]>> = {};
+    trucks.forEach(truck => {
+      grouped[truck.id] = {};
+      daysInWeek.forEach(day => {
+        const dayKey = format(day, 'yyyy-MM-dd');
+        grouped[truck.id][dayKey] = events.filter(event => {
+          if (event.truckId !== truck.id) return false;
+          const eventStart = new Date(event.start);
+          const eventEnd = new Date(event.end);
+          // Check if the event occurs on this specific day
+          return isSameDay(eventStart, day) || isSameDay(eventEnd, day) || 
+                 (eventStart < day && eventEnd > day) || // Spans across the day
+                 isWithinInterval(day, { start: eventStart, end: eventEnd }); // Catches events starting/ending on this day
+        }).sort((a,b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+      });
     });
-    return groupedEvents;
-  }, [events]);
+    return grouped;
+  }, [events, trucks, daysInWeek]);
 
-  const selectedDayEvents = selectedDate ? eventsByDate[format(selectedDate, 'yyyy-MM-dd')] || [] : [];
+  const goToPreviousWeek = () => setCurrentDate(subWeeks(currentDate, 1));
+  const goToNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
 
-  const DayCellContent = ({ date }: { date: Date }) => {
-    const dayEvents = eventsByDate[format(date, 'yyyy-MM-dd')] || [];
-    return (
-      <div className="relative h-full w-full">
-        <span className="absolute top-1 right-1 text-xs">{format(date, 'd')}</span>
-        {dayEvents.length > 0 && (
-          <div className="absolute bottom-1 left-1 flex space-x-1">
-            {dayEvents.slice(0, 2).map(event => (
-              <div key={event.id} className="h-2 w-2 rounded-full" style={{ backgroundColor: event.color || 'hsl(var(--primary))' }}></div>
-            ))}
-            {dayEvents.length > 2 && <div className="h-2 w-2 rounded-full bg-muted-foreground"></div>}
-          </div>
-        )}
-      </div>
-    );
-  };
-  
   return (
-    <div className="flex flex-col md:flex-row gap-6 h-full">
-      <Card className="flex-grow shadow-lg md:w-2/3 h-full">
-        <CardContent className="p-0 md:p-2 h-full">
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={setSelectedDate}
-            month={currentMonth}
-            onMonthChange={setCurrentMonth}
-            className="w-full"
-            classNames={{
-              day_cell: "h-16 text-sm", // Increased height for cells
-              day: "h-full w-full rounded-md",
-            }}
-            components={{
-              DayContent: DayCellContent,
-            }}
-            modifiers={{
-                hasEvent: Object.keys(eventsByDate).map(dateStr => parseISO(dateStr))
-            }}
-            modifiersClassNames={{
-                hasEvent: "relative" // Ensure positioning context for event indicators
-            }}
-          />
-        </CardContent>
-      </Card>
-      <Card className="md:w-1/3 shadow-lg h-full flex flex-col">
-        <CardHeader>
-          <CardTitle className="text-xl">
-            Schedule for {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Select a date'}
+    <Card className="shadow-lg h-full flex flex-col">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <Button variant="outline" size="icon" onClick={goToPreviousWeek}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <CardTitle className="text-xl text-center">
+            Week of {format(currentWeekStart, 'MMM d, yyyy')} - {format(currentWeekEnd, 'MMM d, yyyy')}
           </CardTitle>
-          <CardDescription>Events scheduled for the selected day.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex-grow overflow-hidden">
-            <ScrollArea className="h-full pr-3">
-                {selectedDayEvents.length > 0 ? (
-                <ul className="space-y-3">
-                    {selectedDayEvents.map(event => (
-                    <li key={event.id} 
-                        className="p-3 rounded-lg border cursor-pointer hover:bg-muted/80 transition-colors"
-                        style={{borderColor: event.color || 'hsl(var(--border))'}}
-                        onClick={() => onEventClick(event)}>
-                        <div className="flex items-center justify-between">
-                            <h4 className="font-semibold text-sm text-foreground">{event.title}</h4>
-                            <span className="text-xs px-2 py-0.5 rounded-full text-white" style={{backgroundColor: event.color || 'hsl(var(--primary))'}}>
-                            {format(event.start, 'p')} - {format(event.end, 'p')}
-                            </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">Truck: {getTruckName(event.truckId)}</p>
-                        <p className="text-xs text-muted-foreground">Driver: {getDriverName(event.driverId)}</p>
-                        {event.notes && <p className="text-xs text-muted-foreground mt-1">Notes: {event.notes}</p>}
-                    </li>
-                    ))}
-                </ul>
-                ) : (
-                <p className="text-muted-foreground text-center py-6">No events for this day.</p>
-                )}
-            </ScrollArea>
-        </CardContent>
-      </Card>
-    </div>
+          <Button variant="outline" size="icon" onClick={goToNextWeek}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <CardDescription className="text-center">
+          Timeline view of truck schedules for the week. Click an entry to edit.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-grow overflow-hidden p-0 md:p-2">
+        <ScrollArea className="h-full w-full">
+          <Table className="min-w-full border-collapse">
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="sticky left-0 z-10 bg-muted/80 backdrop-blur-sm w-1/6 min-w-[150px] border-r">Truck</TableHead>
+                {daysInWeek.map(day => (
+                  <TableHead key={day.toISOString()} className="text-center border-l min-w-[150px]">
+                    {format(day, 'EEE')} <br />
+                    <span className="text-xs font-normal">{format(day, 'MMM d')}</span>
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {trucks.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={daysInWeek.length + 1} className="text-center text-muted-foreground py-10">
+                    No trucks available. Add trucks to see the schedule.
+                  </TableCell>
+                </TableRow>
+              ) : trucks.map(truck => (
+                <TableRow key={truck.id} className="hover:bg-muted/20">
+                  <TableCell className="sticky left-0 z-10 font-medium bg-card hover:bg-muted/20 border-r min-h-[80px]">
+                    {truck.name}
+                    <p className="text-xs text-muted-foreground">{truck.licensePlate}</p>
+                  </TableCell>
+                  {daysInWeek.map(day => {
+                    const dayKey = format(day, 'yyyy-MM-dd');
+                    const truckDayEvents = eventsByTruckAndDay[truck.id]?.[dayKey] || [];
+                    return (
+                      <TableCell key={day.toISOString()} className="align-top p-1.5 border-l min-h-[80px] h-auto">
+                        {truckDayEvents.length > 0 ? (
+                          <div className="space-y-1">
+                            {truckDayEvents.map(event => (
+                              <div
+                                key={event.id}
+                                onClick={() => onEventClick(event)}
+                                className="p-1.5 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity text-white"
+                                style={{ backgroundColor: event.color || 'hsl(var(--primary))' }}
+                                title={`Driver: ${getDriverName(event.driverId)}\n${event.origin} to ${event.destination}\n${format(new Date(event.start), 'p')} - ${format(new Date(event.end), 'p')}${event.notes ? `\nNotes: ${event.notes}` : ''}`}
+                              >
+                                <p className="font-semibold truncate">{event.title}</p>
+                                <p className="truncate">{format(new Date(event.start), 'p')} - {format(new Date(event.end), 'p')}</p>
+                                {event.isPartialLoad && <Badge variant="secondary" className="mt-0.5 text-xs py-0 px-1 h-auto bg-black/20 text-white">Partial</Badge>}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="h-full w-full"></div> // Empty cell placeholder for consistent height
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </ScrollArea>
+      </CardContent>
+    </Card>
   );
 }
