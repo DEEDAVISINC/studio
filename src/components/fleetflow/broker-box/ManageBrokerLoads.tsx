@@ -129,7 +129,6 @@ export function ManageBrokerLoads({ brokerLoads, shippers, onAddBrokerLoad, onUp
   };
   
   const copyLoadInfoToClipboard = (load: BrokerLoad) => {
-    const shipper = getShipperById(load.shipperId);
     const loadDetails = `
 LOAD DETAILS:
 Commodity: ${load.commodity}
@@ -140,7 +139,6 @@ Delivery Date: ${format(new Date(load.deliveryDate), 'PPP p')}
 Equipment: ${load.equipmentType}
 Offered Rate: $${load.offeredRate.toLocaleString()}
 ${load.weight ? `Weight: ${load.weight} lbs\n` : ''}${load.dims ? `Dimensions: ${load.dims}\n` : ''}
-Shipper Name: ${shipper?.name || 'N/A'}
 Notes: ${load.notes || 'N/A'}
 Status: ${load.status}
 Load ID: ${load.id}
@@ -377,3 +375,5 @@ Load ID: ${load.id}
     </div>
   );
 }
+
+    
