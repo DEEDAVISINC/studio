@@ -12,6 +12,7 @@ import {
   Route,
   Settings,
   Blocks, // Icon for Load Optimization
+  DollarSign, // Icon for Dispatch Central
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -29,6 +30,7 @@ const navItems: NavItem[] = [
   { href: '/dashboard/carriers', label: 'Carriers', icon: Briefcase },
   { href: '/dashboard/optimize-route', label: 'Optimize Route', icon: Route },
   { href: '/dashboard/optimize-load', label: 'Optimize Load', icon: Blocks },
+  { href: '/dashboard/dispatch-central', label: 'Dispatch Central', icon: DollarSign },
 ];
 
 export function SidebarNav() {
