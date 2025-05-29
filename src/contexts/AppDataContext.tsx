@@ -110,6 +110,11 @@ const initialCarriers: Carrier[] = [
     availabilityNotes: 'Available Mon-Fri, national coverage.',
     preferredLanes: 'CA to TX, IL to FL',
     fmcsaAuthorityStatus: 'Not Verified',
+    powerUnits: 50,
+    driverCount: 60,
+    mcs150FormDate: parseISO('2024-01-15T00:00:00.000Z'),
+    operationClassification: 'Auth. For Hire',
+    carrierOperationType: 'Interstate',
   },
   { 
     id: 'carrier2', 
@@ -134,6 +139,11 @@ const initialCarriers: Carrier[] = [
     availabilityNotes: 'Weekend availability, regional only.',
     preferredLanes: 'Midwest Region',
     fmcsaAuthorityStatus: 'Not Verified',
+    powerUnits: 25,
+    driverCount: 30,
+    mcs150FormDate: parseISO('2023-11-20T00:00:00.000Z'),
+    operationClassification: 'Auth. For Hire',
+    carrierOperationType: 'Interstate, Intrastate Non-Hazmat',
   },
 ];
 
@@ -244,6 +254,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       ...carrierData,
       id: `carrier${Date.now()}`,
       insurancePolicyExpirationDate: carrierData.insurancePolicyExpirationDate ? new Date(carrierData.insurancePolicyExpirationDate) : undefined,
+      mcs150FormDate: carrierData.mcs150FormDate ? new Date(carrierData.mcs150FormDate) : undefined,
       fmcsaAuthorityStatus: 'Not Verified', 
       fmcsaLastChecked: undefined,
     };
@@ -261,6 +272,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const updatedCarrier = {
       ...updatedCarrierData,
       insurancePolicyExpirationDate: updatedCarrierData.insurancePolicyExpirationDate ? new Date(updatedCarrierData.insurancePolicyExpirationDate) : undefined,
+      mcs150FormDate: updatedCarrierData.mcs150FormDate ? new Date(updatedCarrierData.mcs150FormDate) : undefined,
       fmcsaLastChecked: updatedCarrierData.fmcsaLastChecked ? new Date(updatedCarrierData.fmcsaLastChecked) : undefined,
     };
     setCarriers(prev => prev.map(c => (c.id === updatedCarrier.id ? updatedCarrier : c)));
@@ -527,4 +539,3 @@ export function useAppData() {
   }
   return context;
 }
-

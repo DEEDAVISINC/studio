@@ -64,6 +64,13 @@ export interface Carrier {
 
   fmcsaAuthorityStatus?: FmcsaAuthorityStatus;
   fmcsaLastChecked?: Date | string;
+
+  // New fields from FMCSA SAFER
+  powerUnits?: number;
+  driverCount?: number; // Total drivers for the company
+  mcs150FormDate?: Date | string;
+  operationClassification?: string; // e.g., "Auth. For Hire", "Private Property"
+  carrierOperationType?: string; // e.g., "Interstate", "Intrastate Hazmat"
 }
 
 
@@ -203,4 +210,3 @@ export interface AvailableEquipmentPost {
   notes?: string;
   status: 'Available' | 'Booked' | 'Expired'; // Simple status for now
 }
-

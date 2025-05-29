@@ -61,8 +61,16 @@ const carrierSchema = z.object({
   paymentTerms: z.string().optional(),
   preferredLanes: z.string().optional(),
   
-  contractDetails: z.string().min(5, "Contract details must be at least 5 characters."), // Kept existing requirement
-  availabilityNotes: z.string().optional(), // Kept existing
+  contractDetails: z.string().min(5, "Contract details must be at least 5 characters."),
+  availabilityNotes: z.string().optional(),
+
+  // New FMCSA fields
+  powerUnits: z.coerce.number().int().positive().optional().nullable(),
+  driverCount: z.coerce.number().int().positive().optional().nullable(),
+  mcs150FormDate: z.date().optional().nullable(),
+  operationClassification: z.string().optional(),
+  carrierOperationType: z.string().optional(),
+
 }).refine(data => data.isMailingSameAsPhysical || (data.mailingAddress && data.mailingAddress.length >= 5), {
   message: "Mailing address is required if not same as physical.",
   path: ["mailingAddress"],
@@ -74,7 +82,7 @@ type CarrierFormData = z.infer<typeof carrierSchema>;
 interface AddCarrierDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onAddCarrier: (carrier: Omit<Carrier, 'id'> | Carrier) => void; // Modified to accept full Carrier for updates
+  onAddCarrier: (carrier: Omit<Carrier, 'id'> | Carrier) => void;
   carrierToEdit?: Carrier | null;
 }
 
@@ -93,6 +101,8 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
       factoringCompanyName: '', factoringCompanyContact: '', factoringCompanyPhone: '',
       paymentTerms: '', preferredLanes: '',
       contractDetails: '', availabilityNotes: '',
+      powerUnits: null, driverCount: null, mcs150FormDate: null,
+      operationClassification: '', carrierOperationType: '',
     },
   });
 
@@ -108,6 +118,13 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
                 ? parseISO(carrierToEdit.insurancePolicyExpirationDate) 
                 : carrierToEdit.insurancePolicyExpirationDate) 
             : null,
+        mcs150FormDate: carrierToEdit.mcs150FormDate
+            ? (typeof carrierToEdit.mcs150FormDate === 'string'
+                ? parseISO(carrierToEdit.mcs150FormDate)
+                : carrierToEdit.mcs150FormDate)
+            : null,
+        powerUnits: carrierToEdit.powerUnits ?? null,
+        driverCount: carrierToEdit.driverCount ?? null,
       });
     } else {
       form.reset({
@@ -121,6 +138,8 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
         factoringCompanyName: '', factoringCompanyContact: '', factoringCompanyPhone: '',
         paymentTerms: '', preferredLanes: '',
         contractDetails: '', availabilityNotes: '',
+        powerUnits: null, driverCount: null, mcs150FormDate: null,
+        operationClassification: '', carrierOperationType: '',
       });
     }
   }, [carrierToEdit, form, isOpen]);
@@ -133,16 +152,19 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
 
 
   const onSubmit = (data: CarrierFormData) => {
-    const submissionData: Omit<Carrier, 'id' | 'insurancePolicyExpirationDate'> & { insurancePolicyExpirationDate?: string } = {
+    const submissionData = {
       ...data,
       mailingAddress: data.isMailingSameAsPhysical ? data.physicalAddress : data.mailingAddress,
       insurancePolicyExpirationDate: data.insurancePolicyExpirationDate ? data.insurancePolicyExpirationDate.toISOString() : undefined,
+      mcs150FormDate: data.mcs150FormDate ? data.mcs150FormDate.toISOString() : undefined,
+      powerUnits: data.powerUnits || undefined, // Ensure undefined if null/empty for optional numbers
+      driverCount: data.driverCount || undefined,
     };
 
     if (carrierToEdit) {
-      onAddCarrier({ ...carrierToEdit, ...submissionData } as Carrier); // Cast to Carrier for update
+      onAddCarrier({ ...carrierToEdit, ...submissionData } as Carrier);
     } else {
-      onAddCarrier(submissionData as Omit<Carrier, 'id'>); // Cast for new carrier
+      onAddCarrier(submissionData as Omit<Carrier, 'id'>);
     }
     
     toast({
@@ -167,7 +189,7 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
         <DialogHeader>
           <DialogTitle className="text-foreground">{carrierToEdit ? "Edit Carrier" : "Add New Carrier"}</DialogTitle>
           <DialogDescription>
-            Fill in the details for the {carrierToEdit ? "carrier." : "new carrier."} All fields are optional unless marked with *.
+            Fill in the details for the {carrierToEdit ? "carrier." : "new carrier."} Fields marked with * are required.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 py-2 max-h-[75vh] overflow-y-auto pr-3">
@@ -264,8 +286,51 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
               {form.formState.errors.contactEmail && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.contactEmail.message}</p>}
             </div>
           </div>
+
+          <FormSectionTitle title="FMCSA &amp; Operational Details" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <Label htmlFor="powerUnits" className="text-foreground">Power Units</Label>
+              <Input id="powerUnits" type="number" {...form.register("powerUnits")} className="mt-1 bg-background border-border focus:ring-primary" />
+              {form.formState.errors.powerUnits && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.powerUnits.message}</p>}
+            </div>
+            <div>
+              <Label htmlFor="driverCount" className="text-foreground">Driver Count</Label>
+              <Input id="driverCount" type="number" {...form.register("driverCount")} className="mt-1 bg-background border-border focus:ring-primary" />
+              {form.formState.errors.driverCount && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.driverCount.message}</p>}
+            </div>
+             <div>
+                <Label htmlFor="mcs150FormDate">MCS-150 Form Date</Label>
+                <Controller name="mcs150FormDate" control={form.control} render={({ field }) => (
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal mt-1 bg-background border-border", !field.value && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={field.onChange} initialFocus />
+                        </PopoverContent>
+                    </Popover>
+                )}/>
+                 {form.formState.errors.mcs150FormDate && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.mcs150FormDate.message}</p>}
+            </div>
+          </div>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="operationClassification" className="text-foreground">Operation Classification</Label>
+              <Input id="operationClassification" {...form.register("operationClassification")} className="mt-1 bg-background border-border focus:ring-primary" placeholder="e.g., Auth. For Hire"/>
+               {form.formState.errors.operationClassification && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.operationClassification.message}</p>}
+            </div>
+            <div>
+              <Label htmlFor="carrierOperationType" className="text-foreground">Carrier Operation Type</Label>
+              <Input id="carrierOperationType" {...form.register("carrierOperationType")} className="mt-1 bg-background border-border focus:ring-primary" placeholder="e.g., Interstate"/>
+              {form.formState.errors.carrierOperationType && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.carrierOperationType.message}</p>}
+            </div>
+          </div>
           
-          <FormSectionTitle title="Operations & Insurance" />
+          <FormSectionTitle title="Equipment & Insurance" />
            <div>
               <Label htmlFor="equipmentTypes" className="text-foreground">Equipment Types</Label>
               <Input id="equipmentTypes" {...form.register("equipmentTypes")} className="mt-1 bg-background border-border focus:ring-primary" placeholder="e.g., Van, Reefer, Flatbed" />
@@ -360,5 +425,3 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
     </Dialog>
   );
 }
-
-    
