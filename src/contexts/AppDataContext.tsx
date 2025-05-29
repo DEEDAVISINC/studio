@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback } from 'react';
 import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus } from '@/lib/types';
-import { addDays, parseISO } from 'date-fns';
+import { addDays, parseISO, addYears } from 'date-fns';
 
 
 interface AppDataContextType {
@@ -68,10 +68,22 @@ interface AppDataContextType {
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
+// Helper function to calculate MC-150 Due Date
+const calculateMc150DueDate = (carrierMc150FormDate?: Date | string): Date | undefined => {
+  if (!carrierMc150FormDate) return undefined;
+  try {
+    return addYears(parseISO(carrierMc150FormDate as string), 2);
+  } catch (e) {
+    // console.error("Error calculating MC-150 due date:", e);
+    return undefined;
+  }
+};
+
+
 const initialTrucks: Truck[] = [
-  { id: 'truck1', name: 'Alpha Hauler', licensePlate: 'TRK-001', model: 'Volvo VNL', year: 2022, carrierId: 'carrier1', driverId: 'driver1', maintenanceStatus: 'Good', mc150DueDate: parseISO('2025-06-15T00:00:00.000Z'), permitExpiryDate: parseISO('2024-12-31T00:00:00.000Z'), taxDueDate: parseISO('2024-09-30T00:00:00.000Z') },
-  { id: 'truck2', name: 'Beta Mover', licensePlate: 'TRK-002', model: 'Freightliner Cascadia', year: 2021, carrierId: 'carrier2', driverId: 'driver2', maintenanceStatus: 'Needs Service', mc150DueDate: parseISO('2025-08-01T00:00:00.000Z') },
-  { id: 'truck3', name: 'Gamma Transporter', licensePlate: 'TRK-003', model: 'Peterbilt 579', year: 2023, carrierId: 'carrier1', maintenanceStatus: 'In Service', permitExpiryDate: parseISO('2025-03-28T00:00:00.000Z') },
+  { id: 'truck1', name: 'Alpha Hauler', licensePlate: 'TRK-001', model: 'Volvo VNL', year: 2022, carrierId: 'carrier1', driverId: 'driver1', maintenanceStatus: 'Good', mc150DueDate: calculateMc150DueDate(parseISO('2024-01-15T00:00:00.000Z')), permitExpiryDate: parseISO('2024-12-31T00:00:00.000Z'), taxDueDate: parseISO('2024-09-30T00:00:00.000Z') },
+  { id: 'truck2', name: 'Beta Mover', licensePlate: 'TRK-002', model: 'Freightliner Cascadia', year: 2021, carrierId: 'carrier2', driverId: 'driver2', maintenanceStatus: 'Needs Service', mc150DueDate: calculateMc150DueDate(parseISO('2023-11-20T00:00:00.000Z')) },
+  { id: 'truck3', name: 'Gamma Transporter', licensePlate: 'TRK-003', model: 'Peterbilt 579', year: 2023, carrierId: 'carrier1', maintenanceStatus: 'In Service', permitExpiryDate: parseISO('2025-03-28T00:00:00.000Z'), mc150DueDate: calculateMc150DueDate(parseISO('2024-01-15T00:00:00.000Z')) },
 ];
 
 const initialDrivers: Driver[] = [
@@ -269,6 +281,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateCarrier = useCallback((updatedCarrierData: Carrier) => {
+    const originalCarrier = carriers.find(c => c.id === updatedCarrierData.id);
     const updatedCarrier = {
       ...updatedCarrierData,
       insurancePolicyExpirationDate: updatedCarrierData.insurancePolicyExpirationDate ? new Date(updatedCarrierData.insurancePolicyExpirationDate) : undefined,
@@ -276,11 +289,26 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       fmcsaLastChecked: updatedCarrierData.fmcsaLastChecked ? new Date(updatedCarrierData.fmcsaLastChecked) : undefined,
     };
     setCarriers(prev => prev.map(c => (c.id === updatedCarrier.id ? updatedCarrier : c)));
-  }, []);
+
+    // If carrier's MCS-150 Form Date changed, update their trucks' MC-150 Due Dates
+    const originalMc150Str = originalCarrier?.mcs150FormDate ? parseISO(originalCarrier.mcs150FormDate as string).toISOString() : null;
+    const updatedMc150Str = updatedCarrier.mcs150FormDate ? parseISO(updatedCarrier.mcs150FormDate as string).toISOString() : null;
+
+    if (originalMc150Str !== updatedMc150Str) {
+      const newTruckMc150DueDate = calculateMc150DueDate(updatedCarrier.mcs150FormDate);
+      setTrucks(prevTrucks => 
+        prevTrucks.map(t => 
+          t.carrierId === updatedCarrier.id 
+            ? { ...t, mc150DueDate: newTruckMc150DueDate } 
+            : t
+        )
+      );
+    }
+  }, [carriers]);
 
   const removeCarrier = useCallback((carrierId: string) => {
     setCarriers(prev => prev.filter(c => c.id !== carrierId));
-    setTrucks(prev => prev.map(t => t.carrierId === carrierId ? {...t, carrierId: ''} : t)); 
+    setTrucks(prev => prev.map(t => t.carrierId === carrierId ? {...t, carrierId: '', mc150DueDate: undefined } : t)); 
     setAvailableEquipmentPosts(prev => prev.filter(p => p.carrierId !== carrierId));
   }, []);
 

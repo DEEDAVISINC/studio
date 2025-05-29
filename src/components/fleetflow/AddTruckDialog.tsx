@@ -22,7 +22,7 @@ import type { Truck, Driver, Carrier } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addYears } from "date-fns";
 
 const truckSchema = z.object({
   name: z.string().min(2, { message: "Truck name must be at least 2 characters." }),
@@ -42,7 +42,7 @@ type TruckFormData = z.infer<typeof truckSchema>;
 interface AddTruckDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onAddTruck: (truck: Omit<Truck, 'id'>) => void;
+  onAddTruck: (truck: Omit<Truck, 'id'> | Truck) => void; // Modified to accept Truck for updates
   truckToEdit?: Truck | null; 
   drivers: Driver[];
   carriers: Carrier[];
@@ -69,13 +69,30 @@ export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, 
   });
 
   const watchedDriverId = form.watch("driverId");
+  const watchedCarrierId = form.watch("carrierId");
 
   useEffect(() => {
+    if (!isOpen) return; // Don't run effects if dialog is closed
+
     if (truckToEdit) {
+      const initialMc150DueDate = truckToEdit.mc150DueDate 
+        ? (typeof truckToEdit.mc150DueDate === 'string' ? parseISO(truckToEdit.mc150DueDate) : truckToEdit.mc150DueDate) 
+        : null;
+      
+      let derivedMc150DueDate = initialMc150DueDate;
+      if (!initialMc150DueDate && truckToEdit.carrierId) {
+        const carrier = carriers.find(c => c.id === truckToEdit.carrierId);
+        if (carrier && carrier.mcs150FormDate) {
+          try {
+            derivedMc150DueDate = addYears(parseISO(carrier.mcs150FormDate as string), 2);
+          } catch (e) { console.error("Error parsing carrier mcs150FormDate for prefill", e); }
+        }
+      }
+
       form.reset({
         ...truckToEdit,
-        driverId: truckToEdit.driverId || undefined, // Ensure undefined if null/empty
-        mc150DueDate: truckToEdit.mc150DueDate ? (typeof truckToEdit.mc150DueDate === 'string' ? parseISO(truckToEdit.mc150DueDate) : truckToEdit.mc150DueDate) : null,
+        driverId: truckToEdit.driverId || undefined,
+        mc150DueDate: derivedMc150DueDate,
         permitExpiryDate: truckToEdit.permitExpiryDate ? (typeof truckToEdit.permitExpiryDate === 'string' ? parseISO(truckToEdit.permitExpiryDate) : truckToEdit.permitExpiryDate) : null,
         taxDueDate: truckToEdit.taxDueDate ? (typeof truckToEdit.taxDueDate === 'string' ? parseISO(truckToEdit.taxDueDate) : truckToEdit.taxDueDate) : null,
       });
@@ -93,19 +110,43 @@ export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, 
         taxDueDate: null,
       });
     }
-  }, [truckToEdit, form, isOpen]);
+  }, [truckToEdit, form, isOpen, carriers]);
+
+
+  useEffect(() => {
+    if (!isOpen || !watchedCarrierId) return;
+
+    const selectedCarrier = carriers.find(c => c.id === watchedCarrierId);
+    if (selectedCarrier && selectedCarrier.mcs150FormDate) {
+      try {
+        const newDueDate = addYears(parseISO(selectedCarrier.mcs150FormDate as string), 2);
+        form.setValue("mc150DueDate", newDueDate, { shouldValidate: true, shouldDirty: true });
+      } catch (e) {
+        console.error("Error calculating due date from carrier's MCS-150 date:", e);
+        // Optionally clear or handle error: form.setValue("mc150DueDate", null);
+      }
+    } else if (selectedCarrier && !selectedCarrier.mcs150FormDate) {
+      // If carrier has no MCS-150 date, you might want to clear mc150DueDate
+      // or leave it for manual input. For now, it only pre-fills if carrier has the date.
+    }
+  }, [watchedCarrierId, carriers, form, isOpen]);
+
 
   const onSubmit = (data: TruckFormData) => {
-    // Convert dates to string if needed, or ensure AppDataContext handles Date objects
-    const truckData = {
+    const submissionData = {
         ...data,
-        driverId: data.driverId === UNASSIGNED_DRIVER_VALUE ? undefined : data.driverId, // Ensure unassigned maps to undefined
-        mc150DueDate: data.mc150DueDate ? data.mc150DueDate.toISOString() : undefined,
-        permitExpiryDate: data.permitExpiryDate ? data.permitExpiryDate.toISOString() : undefined,
-        taxDueDate: data.taxDueDate ? data.taxDueDate.toISOString() : undefined,
+        driverId: data.driverId === UNASSIGNED_DRIVER_VALUE ? undefined : data.driverId,
+        mc150DueDate: data.mc150DueDate ? data.mc150DueDate : undefined, // Already a Date object or null
+        permitExpiryDate: data.permitExpiryDate ? data.permitExpiryDate : undefined,
+        taxDueDate: data.taxDueDate ? data.taxDueDate : undefined,
     };
-
-    onAddTruck(truckData as Omit<Truck, 'id'>); // Type assertion might be needed if your context expects string dates
+    
+    if (truckToEdit) {
+        onAddTruck({ ...truckToEdit, ...submissionData } as Truck);
+    } else {
+        onAddTruck(submissionData as Omit<Truck, 'id'>);
+    }
+    
     toast({
       title: truckToEdit ? "Truck Updated" : "Truck Added",
       description: `Truck "${data.name}" has been successfully ${truckToEdit ? 'updated' : 'added'}.`,
