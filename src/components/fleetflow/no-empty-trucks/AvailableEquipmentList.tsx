@@ -1,5 +1,6 @@
 
 "use client";
+import { useState, useEffect } from 'react'; // Added useEffect and useState
 import type { AvailableEquipmentPost } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,11 +20,17 @@ interface AvailableEquipmentListProps {
 
 export function AvailableEquipmentList({ posts, onEdit, onDelete, getCarrierName }: AvailableEquipmentListProps) {
   const { toast } = useToast();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const copyContactInfo = (post: AvailableEquipmentPost) => {
+    const fromDateStr = hasMounted ? format(post.availableFromDate, 'PPP') : 'Loading...';
     const info = `
 Equipment: ${post.equipmentType}
-Available From: ${format(new Date(post.availableFromDate), 'PPP')}
+Available From: ${fromDateStr}
 Location: ${post.currentLocation}
 Contact: ${post.contactName}
 Phone: ${post.contactPhone}
@@ -64,8 +71,9 @@ Carrier: ${getCarrierName(post.carrierId)}
           </CardHeader>
           <CardContent className="space-y-2 text-sm flex-grow">
             <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /> Currently at: {post.currentLocation}</div>
-            <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-muted-foreground" /> Available: {format(new Date(post.availableFromDate), 'MMM d, yyyy')}
-              {post.availableToDate && ` to ${format(new Date(post.availableToDate), 'MMM d, yyyy')}`}
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" /> Available: {hasMounted ? format(post.availableFromDate, 'MMM d, yyyy') : '...'}
+              {post.availableToDate && (hasMounted ? ` to ${format(post.availableToDate, 'MMM d, yyyy')}` : ' ...')}
             </div>
             {post.preferredDestinations && <div className="flex items-center gap-2"><Globe className="h-4 w-4 text-muted-foreground" /> Pref. Destinations: {post.preferredDestinations}</div>}
             {post.rateExpectation && <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-muted-foreground" /> Rate: {post.rateExpectation}</div>}
@@ -109,3 +117,4 @@ Carrier: ${getCarrierName(post.carrierId)}
     </div>
   );
 }
+
