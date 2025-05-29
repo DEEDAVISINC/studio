@@ -4,7 +4,7 @@ import type { Carrier, FmcsaAuthorityStatus } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Trash2, Edit3, Eye, Phone, Mail, ShieldCheck, ShieldAlert, ShieldQuestion, Loader2, CheckCircle, AlertCircleIcon } from "lucide-react";
+import { MoreHorizontal, Trash2, Edit3, Eye, Phone, Mail, ShieldCheck, ShieldAlert, ShieldQuestion, Loader2, CheckCircle, AlertCircleIcon, Copy } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useAppData } from "@/contexts/AppDataContext";
@@ -45,6 +45,27 @@ export function CarrierListTable({ carriers, onEdit, onDelete }: CarrierListTabl
         setVerifyingCarrierId(null);
     }
   }, [verifyCarrierFmcsa, toast]);
+
+  const handleCopyContactCard = (carrier: Carrier) => {
+    const contactInfo = `
+Carrier Name: ${carrier.name}
+${carrier.dba ? `DBA: ${carrier.dba}\n` : ''}MC #: ${carrier.mcNumber || 'N/A'}
+US DOT #: ${carrier.usDotNumber || 'N/A'}
+
+Contact Person: ${carrier.contactPerson}
+Phone: ${carrier.contactPhone}
+Email: ${carrier.contactEmail}
+    `.trim();
+
+    navigator.clipboard.writeText(contactInfo)
+      .then(() => {
+        toast({ title: "Contact Card Copied!", description: `${carrier.name}'s contact info copied to clipboard.` });
+      })
+      .catch(err => {
+        console.error("Failed to copy contact card: ", err);
+        toast({ title: "Copy Failed", description: "Could not copy contact info.", variant: "destructive" });
+      });
+  };
 
   const getFmcsaStatusBadge = (status?: FmcsaAuthorityStatus) => {
     switch (status) {
@@ -131,6 +152,9 @@ export function CarrierListTable({ carriers, onEdit, onDelete }: CarrierListTabl
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onEdit(carrier)}>
                        <Edit3 className="mr-2 h-4 w-4" /> Edit
+                    </DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => handleCopyContactCard(carrier)}>
+                       <Copy className="mr-2 h-4 w-4" /> Copy Contact Card
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleVerifyFmcsa(carrier)} disabled={verifyingCarrierId === carrier.id}>
                         {verifyingCarrierId === carrier.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />} 
