@@ -1,15 +1,16 @@
 
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Carrier, DispatchFeeRecord, Invoice, ScheduleEntry } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, AlertTriangle } from "lucide-react";
-import { format } from "date-fns";
+import { format, isPast, startOfWeek, addDays, getDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { ViewInvoiceDialog } from './ViewInvoiceDialog'; // Create this component
+import { ViewInvoiceDialog } from './ViewInvoiceDialog';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface CarrierInvoicingProps {
   carriers: Carrier[];
@@ -33,7 +34,52 @@ export function CarrierInvoicing({
   const [selectedCarrierId, setSelectedCarrierId] = useState<string | undefined>(undefined);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
+  const [hasCriticallyOverduePayments, setHasCriticallyOverduePayments] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasMounted || !selectedCarrierId) {
+      setHasCriticallyOverduePayments(false);
+      return;
+    }
+
+    const carrierSentInvoices = invoices.filter(
+      (inv) => inv.carrierId === selectedCarrierId && inv.status === 'Sent'
+    );
+
+    let isOverdue = false;
+    const today = new Date();
+
+    for (const inv of carrierSentInvoices) {
+      const dueDate = new Date(inv.dueDate);
+      
+      // Determine Wednesday of the week of the invoice's due date
+      // Assuming week starts on Monday (1 for date-fns getDay, Monday is 1)
+      const mondayOfDueDateWeek = startOfWeek(dueDate, { weekStartsOn: 1 });
+      const wednesdayOfDueDateWeek = addDays(mondayOfDueDateWeek, 2); // Wednesday 00:00:00
+      
+      // End of that Wednesday
+      const endOfPaymentWednesday = new Date(
+        wednesdayOfDueDateWeek.getFullYear(),
+        wednesdayOfDueDateWeek.getMonth(),
+        wednesdayOfDueDateWeek.getDate(),
+        23, 59, 59, 999
+      );
+
+      if (today > endOfPaymentWednesday) {
+        isOverdue = true;
+        break;
+      }
+    }
+    setHasCriticallyOverduePayments(isOverdue);
+
+  }, [selectedCarrierId, invoices, hasMounted]);
+
 
   const pendingFeesForSelectedCarrier = selectedCarrierId
     ? dispatchFeeRecords.filter(fee => fee.carrierId === selectedCarrierId && fee.status === 'Pending')
@@ -97,6 +143,17 @@ export function CarrierInvoicing({
         )}
       </div>
 
+      {hasMounted && hasCriticallyOverduePayments && selectedCarrierId && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Overdue Payments Detected</AlertTitle>
+          <AlertDescription>
+            This carrier has 'Sent' invoices where payment was due by Wednesday of a previous week. 
+            Their eligibility for new bookable loads may be impacted until payments are settled.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {selectedCarrierId && (
         <>
           <Card>
@@ -122,7 +179,7 @@ export function CarrierInvoicing({
                         return (
                           <TableRow key={fee.id}>
                             <TableCell className="font-medium">{scheduleEntry?.title || 'N/A'}</TableCell>
-                            <TableCell>{format(new Date(fee.calculatedDate), 'P p')}</TableCell>
+                            <TableCell>{hasMounted ? format(new Date(fee.calculatedDate), 'P p') : '...'}</TableCell>
                             <TableCell>{fee.originalLoadAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
                             <TableCell className="text-right">{fee.feeAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
                           </TableRow>
@@ -162,13 +219,12 @@ export function CarrierInvoicing({
                                 {carrierInvoices.map(invoice => (
                                     <TableRow key={invoice.id}>
                                         <TableCell>{invoice.invoiceNumber}</TableCell>
-                                        <TableCell>{format(new Date(invoice.invoiceDate), 'P')}</TableCell>
-                                        <TableCell>{format(new Date(invoice.dueDate), 'P')}</TableCell>
+                                        <TableCell>{hasMounted ? format(new Date(invoice.invoiceDate), 'P') : '...'}</TableCell>
+                                        <TableCell>{hasMounted ? format(new Date(invoice.dueDate), 'P') : '...'}</TableCell>
                                         <TableCell>{invoice.totalAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
                                         <TableCell>{invoice.status}</TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="outline" size="sm" onClick={() => { setSelectedInvoice(invoice); setIsInvoiceDialogOpen(true); }}>View</Button>
-                                            {/* Add more actions like Mark as Paid, Send, etc. */}
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -198,3 +254,4 @@ export function CarrierInvoicing({
     </div>
   );
 }
+
