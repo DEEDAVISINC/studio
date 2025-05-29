@@ -35,7 +35,7 @@ const carrierSchema = z.object({
 
   companyPhone: z.string().optional().refine(val => !val || val.length === 0 || /^\S*$/.test(val), { message: "Company phone should not contain spaces."}),
   faxNumber: z.string().optional().refine(val => !val || val.length === 0 || /^\S*$/.test(val), { message: "Fax number should not contain spaces."}),
-  companyEmail: z.string().optional().email({ message: "Invalid company email address." }).or(z.literal("")),
+  companyEmail: z.string().email({ message: "Invalid company email address." }).optional().or(z.literal("")),
   
   physicalAddress: z.string().min(5, "Physical address is required."),
   isMailingSameAsPhysical: z.boolean().optional(),
@@ -52,7 +52,7 @@ const carrierSchema = z.object({
   insurancePolicyExpirationDate: z.date().optional().nullable(),
   insuranceAgentName: z.string().optional(),
   insuranceAgentPhone: z.string().optional().refine(val => !val || val.length === 0 || /^\S*$/.test(val), { message: "Agent phone should not contain spaces."}),
-  insuranceAgentEmail: z.string().optional().email({ message: "Invalid agent email address." }).or(z.literal("")),
+  insuranceAgentEmail: z.string().email({ message: "Invalid agent email address." }).optional().or(z.literal("")),
 
   factoringCompanyName: z.string().optional(),
   factoringCompanyContact: z.string().optional(),
@@ -360,3 +360,5 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
     </Dialog>
   );
 }
+
+    
