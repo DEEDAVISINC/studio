@@ -2,7 +2,7 @@
 "use client";
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Added CardContent here
 import { PlusCircle, RadioTower } from "lucide-react";
 import { useAppData } from '@/contexts/AppDataContext';
 import type { AvailableEquipmentPost } from '@/lib/types';
