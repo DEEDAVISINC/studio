@@ -179,3 +179,22 @@ export interface LoadDocument {
   fileUrl?: string; // Placeholder for actual file path/URL
   uploadedBy: string; // Could be broker or carrier ID
 }
+
+// #noemptytrucks Feature
+export interface AvailableEquipmentPost {
+  id: string;
+  carrierId: string; 
+  // postedByUserId: string; // Would be used in a real app with auth
+  postedDate: Date;
+  equipmentType: string; 
+  currentLocation: string; 
+  availableFromDate: Date;
+  availableToDate?: Date; 
+  preferredDestinations?: string; 
+  rateExpectation?: string; 
+  contactName: string; 
+  contactPhone: string;
+  contactEmail?: string;
+  notes?: string;
+  status: 'Available' | 'Booked' | 'Expired'; // Simple status for now
+}

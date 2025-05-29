@@ -2,7 +2,7 @@
 "use client";
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback } from 'react';
-import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus } from '@/lib/types';
+import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost } from '@/lib/types';
 import { addDays, parseISO } from 'date-fns';
 
 
@@ -16,6 +16,7 @@ interface AppDataContextType {
   shippers: Shipper[];
   brokerLoads: BrokerLoad[];
   loadDocuments: LoadDocument[];
+  availableEquipmentPosts: AvailableEquipmentPost[];
   
   addTruck: (truck: Omit<Truck, 'id'>) => void;
   updateTruck: (truck: Truck) => void;
@@ -51,6 +52,9 @@ interface AppDataContextType {
 
   addLoadDocument: (doc: Omit<LoadDocument, 'id' | 'uploadDate'>) => void;
 
+  addAvailableEquipmentPost: (post: Omit<AvailableEquipmentPost, 'id' | 'postedDate' | 'status'>) => AvailableEquipmentPost;
+  updateAvailableEquipmentPost: (post: AvailableEquipmentPost) => void;
+  removeAvailableEquipmentPost: (postId: string) => void;
 
   getTruckById: (truckId: string) => Truck | undefined;
   getDriverById: (driverId: string) => Driver | undefined;
@@ -58,6 +62,7 @@ interface AppDataContextType {
   getScheduleEntryById: (scheduleEntryId: string) => ScheduleEntry | undefined;
   getShipperById: (shipperId: string) => Shipper | undefined;
   getBrokerLoadById: (loadId: string) => BrokerLoad | undefined;
+  getAvailableEquipmentPostById: (postId: string) => AvailableEquipmentPost | undefined;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -144,6 +149,25 @@ const initialBrokerLoads: BrokerLoad[] = [
     }
 ];
 
+const initialAvailableEquipmentPosts: AvailableEquipmentPost[] = [
+  {
+    id: 'aep1', carrierId: 'carrier1', postedDate: parseISO('2025-07-18T10:00:00Z'),
+    equipmentType: '53ft Dry Van', currentLocation: 'Phoenix, AZ',
+    availableFromDate: parseISO('2025-07-19T00:00:00Z'),
+    preferredDestinations: 'CA, NV, UT', rateExpectation: '$2.75/mile',
+    contactName: 'Mike Ross', contactPhone: '555-0011', contactEmail: 'mike.ross@speedylog.com',
+    notes: 'Experienced driver, clean record.', status: 'Available'
+  },
+  {
+    id: 'aep2', carrierId: 'carrier2', postedDate: parseISO('2025-07-19T14:30:00Z'),
+    equipmentType: 'Flatbed', currentLocation: 'Houston, TX',
+    availableFromDate: parseISO('2025-07-20T00:00:00Z'), availableToDate: parseISO('2025-07-25T00:00:00Z'),
+    preferredDestinations: 'TX, LA, OK', rateExpectation: 'Market Rate',
+    contactName: 'Sarah Connor', contactPhone: '555-0022',
+    notes: 'Oversize load capable.', status: 'Available'
+  }
+];
+
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const [trucks, setTrucks] = useState<Truck[]>(initialTrucks);
@@ -155,6 +179,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [shippers, setShippers] = useState<Shipper[]>(initialShippers);
   const [brokerLoads, setBrokerLoads] = useState<BrokerLoad[]>(initialBrokerLoads);
   const [loadDocuments, setLoadDocuments] = useState<LoadDocument[]>([]);
+  const [availableEquipmentPosts, setAvailableEquipmentPosts] = useState<AvailableEquipmentPost[]>(initialAvailableEquipmentPosts);
 
 
   const addTruck = useCallback((truck: Omit<Truck, 'id'>) => {
@@ -216,6 +241,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setCarriers(prev => prev.filter(c => c.id !== carrierId));
     // Also consider implications for trucks assigned to this carrier
     setTrucks(prev => prev.map(t => t.carrierId === carrierId ? {...t, carrierId: ''} : t)); // Example: unassign or reassign
+    setAvailableEquipmentPosts(prev => prev.filter(p => p.carrierId !== carrierId));
   }, []);
   
   const addScheduleEntry = useCallback((entry: Omit<ScheduleEntry, 'id'>): ScheduleEntry => {
@@ -339,6 +365,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const assignLoadToCarrierAndCreateSchedule = useCallback((loadId: string, carrierId: string, truckId: string, driverId?: string): BrokerLoad | undefined => {
     const load = brokerLoads.find(bl => bl.id === loadId);
     const truck = trucks.find(t => t.id === truckId && t.carrierId === carrierId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const currentShipper = load ? shippers.find(s => s.id === load.shipperId) : undefined;
+
 
     if (load && truck && load.status === 'Available') {
       const updatedLoad: BrokerLoad = {
@@ -360,7 +389,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         origin: load.originAddress,
         destination: load.destinationAddress,
         loadValue: load.offeredRate,
-        notes: `Broker Load ID: ${load.id}. Shipper: ${getShipperById(load.shipperId)?.name || 'N/A'}. Confirmation: ${updatedLoad.confirmationNumber}`,
+        notes: `Broker Load ID: ${load.id}. Shipper: ${currentShipper?.name || 'N/A'}. Confirmation: ${updatedLoad.confirmationNumber}`,
         scheduleType: 'Delivery', 
         color: 'hsl(260, 80%, 60%)', 
         brokerLoadId: load.id,
@@ -368,7 +397,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return updatedLoad;
     }
     return undefined;
-  }, [brokerLoads, trucks, addScheduleEntry, updateBrokerLoad, shippers]); // Added shippers to dependency array for getShipperById
+  }, [brokerLoads, trucks, addScheduleEntry, updateBrokerLoad, shippers]);
 
 
   // LoadDocument
@@ -382,6 +411,34 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setLoadDocuments(prev => [newDocument, ...prev]);
   }, []);
 
+  // AvailableEquipmentPost CRUD
+  const addAvailableEquipmentPost = useCallback((postData: Omit<AvailableEquipmentPost, 'id' | 'postedDate' | 'status'>): AvailableEquipmentPost => {
+    const newPost: AvailableEquipmentPost = {
+      ...postData,
+      id: `aep${Date.now()}`,
+      postedDate: new Date(),
+      status: 'Available',
+      availableFromDate: new Date(postData.availableFromDate),
+      availableToDate: postData.availableToDate ? new Date(postData.availableToDate) : undefined,
+    };
+    setAvailableEquipmentPosts(prev => [newPost, ...prev.sort((a,b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime())]);
+    return newPost;
+  }, []);
+
+  const updateAvailableEquipmentPost = useCallback((updatedPost: AvailableEquipmentPost) => {
+    const postWithDates = {
+      ...updatedPost,
+      availableFromDate: new Date(updatedPost.availableFromDate),
+      availableToDate: updatedPost.availableToDate ? new Date(updatedPost.availableToDate) : undefined,
+    };
+    setAvailableEquipmentPosts(prev => prev.map(p => p.id === postWithDates.id ? postWithDates : p)
+                                        .sort((a,b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime()));
+  }, []);
+
+  const removeAvailableEquipmentPost = useCallback((postId: string) => {
+    setAvailableEquipmentPosts(prev => prev.filter(p => p.id !== postId));
+  }, []);
+
 
   const getTruckById = useCallback((truckId: string) => trucks.find(t => t.id === truckId), [trucks]);
   const getDriverById = useCallback((driverId: string) => drivers.find(d => d.id === driverId), [drivers]);
@@ -389,12 +446,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const getScheduleEntryById = useCallback((scheduleEntryId: string) => scheduleEntries.find(s => s.id === scheduleEntryId), [scheduleEntries]);
   const getShipperById = useCallback((shipperId: string) => shippers.find(s => s.id === shipperId), [shippers]);
   const getBrokerLoadById = useCallback((loadId: string) => brokerLoads.find(bl => bl.id === loadId), [brokerLoads]);
+  const getAvailableEquipmentPostById = useCallback((postId: string) => availableEquipmentPosts.find(p => p.id === postId), [availableEquipmentPosts]);
 
 
   return (
     <AppDataContext.Provider value={{
       trucks, drivers, carriers, scheduleEntries, dispatchFeeRecords, invoices,
-      shippers, brokerLoads, loadDocuments,
+      shippers, brokerLoads, loadDocuments, availableEquipmentPosts,
       addTruck, updateTruck, removeTruck,
       addDriver, updateDriver, removeDriver,
       addCarrier, updateCarrier, removeCarrier,
@@ -404,8 +462,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addShipper, updateShipper, removeShipper,
       addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule,
       addLoadDocument,
+      addAvailableEquipmentPost, updateAvailableEquipmentPost, removeAvailableEquipmentPost,
       getTruckById, getDriverById, getCarrierById, getScheduleEntryById,
-      getShipperById, getBrokerLoadById
+      getShipperById, getBrokerLoadById, getAvailableEquipmentPostById,
     }}>
       {children}
     </AppDataContext.Provider>

@@ -14,6 +14,7 @@ import {
   Blocks, 
   DollarSign, 
   PackagePlus, // Icon for Broker Box
+  RadioTower, // Icon for #noemptytrucks
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { href: '/dashboard/drivers', label: 'Drivers', icon: Users },
   { href: '/dashboard/carriers', label: 'Carriers', icon: Briefcase },
   { href: '/dashboard/broker-box', label: 'Broker Box', icon: PackagePlus },
+  { href: '/dashboard/no-empty-trucks', label: 'No Empty Trucks', icon: RadioTower },
   { href: '/dashboard/optimize-route', label: 'Optimize Route', icon: Route },
   { href: '/dashboard/optimize-load', label: 'Optimize Load', icon: Blocks },
   { href: '/dashboard/dispatch-central', label: 'Dispatch Central', icon: DollarSign },
