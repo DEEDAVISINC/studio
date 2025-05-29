@@ -14,19 +14,17 @@ export default function CarriersPage() {
   const [editingCarrier, setEditingCarrier] = useState<Carrier | null>(null);
   const { carriers, addCarrier, updateCarrier, removeCarrier } = useAppData();
 
-  const handleAddOrUpdateCarrier = (carrierData: Omit<Carrier, 'id'> | Carrier) => {
+  const handleAddOrUpdateCarrier = (carrierData: Omit<Carrier, 'id' | 'fmcsaAuthorityStatus' | 'fmcsaLastChecked'> | Carrier) => {
     if (editingCarrier && 'id' in carrierData) {
       updateCarrier(carrierData as Carrier);
     } else {
-      // Ensure all required fields for a new carrier are present, even if optional in the form initially
       const newCarrierData = carrierData as Omit<Carrier, 'id'>;
-      // Add default for contractDetails if not provided, as it's non-optional in type
       if (!newCarrierData.contractDetails) {
         newCarrierData.contractDetails = "Awaiting details"; 
       }
       addCarrier(newCarrierData);
     }
-    setEditingCarrier(null); // Reset editing state
+    setEditingCarrier(null); 
   };
 
   const openEditDialog = (carrier: Carrier) => {
@@ -45,7 +43,7 @@ export default function CarriersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Manage Carriers</h1>
-          <p className="text-muted-foreground">View, add, edit, or remove carriers.</p>
+          <p className="text-muted-foreground">View, add, edit, or remove carriers. Simulated FMCSA verification available.</p>
         </div>
         <Button onClick={openAddDialog} className="bg-primary hover:bg-primary/90">
           <PlusCircle className="mr-2 h-5 w-5" /> Add Carrier
@@ -55,7 +53,7 @@ export default function CarriersPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>Carrier List</CardTitle>
-          <CardDescription>A list of all registered carriers with their details.</CardDescription>
+          <CardDescription>A list of all registered carriers with their details and FMCSA status.</CardDescription>
         </CardHeader>
         <CardContent>
           <CarrierListTable 
@@ -70,7 +68,7 @@ export default function CarriersPage() {
         isOpen={isAddDialogOpen}
         onOpenChange={(isOpen) => {
             setIsAddDialogOpen(isOpen);
-            if (!isOpen) setEditingCarrier(null); // Clear editing state when dialog closes
+            if (!isOpen) setEditingCarrier(null); 
         }}
         onAddCarrier={handleAddOrUpdateCarrier}
         carrierToEdit={editingCarrier}

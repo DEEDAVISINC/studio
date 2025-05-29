@@ -21,6 +21,8 @@ export interface Driver {
   licenseNumber: string;
 }
 
+export type FmcsaAuthorityStatus = 'Not Verified' | 'Pending Verification' | 'Verified Active' | 'Verified Inactive' | 'Verification Failed';
+
 export interface Carrier {
   id: string;
   name: string; // Legal Company Name
@@ -59,6 +61,9 @@ export interface Carrier {
   
   contractDetails: string; // Existing field, can be used for general contract notes
   availabilityNotes?: string; // Existing field, can be used for special instructions
+
+  fmcsaAuthorityStatus?: FmcsaAuthorityStatus;
+  fmcsaLastChecked?: Date | string;
 }
 
 
@@ -198,3 +203,4 @@ export interface AvailableEquipmentPost {
   notes?: string;
   status: 'Available' | 'Booked' | 'Expired'; // Simple status for now
 }
+

@@ -2,7 +2,7 @@
 "use client";
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback } from 'react';
-import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost } from '@/lib/types';
+import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus } from '@/lib/types';
 import { addDays, parseISO } from 'date-fns';
 
 
@@ -29,6 +29,7 @@ interface AppDataContextType {
   addCarrier: (carrier: Omit<Carrier, 'id'>) => void;
   updateCarrier: (carrier: Carrier) => void;
   removeCarrier: (carrierId: string) => void;
+  verifyCarrierFmcsa: (carrierId: string) => Promise<FmcsaAuthorityStatus>;
   
   addScheduleEntry: (entry: Omit<ScheduleEntry, 'id'>) => ScheduleEntry;
   updateScheduleEntry: (entry: ScheduleEntry) => void;
@@ -107,7 +108,8 @@ const initialCarriers: Carrier[] = [
     paymentTerms: 'Net 30',
     contractDetails: 'Primary Carrier Agreement, expires 2025-12-31', 
     availabilityNotes: 'Available Mon-Fri, national coverage.',
-    preferredLanes: 'CA to TX, IL to FL'
+    preferredLanes: 'CA to TX, IL to FL',
+    fmcsaAuthorityStatus: 'Not Verified',
   },
   { 
     id: 'carrier2', 
@@ -130,7 +132,8 @@ const initialCarriers: Carrier[] = [
     paymentTerms: 'Net 15 (Quick Pay 2%)',
     contractDetails: 'Secondary Carrier, flexible terms', 
     availabilityNotes: 'Weekend availability, regional only.',
-    preferredLanes: 'Midwest Region'
+    preferredLanes: 'Midwest Region',
+    fmcsaAuthorityStatus: 'Not Verified',
   },
 ];
 
@@ -237,36 +240,60 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
  const addCarrier = useCallback((carrierData: Omit<Carrier, 'id'>) => {
-    const newCarrier = {
+    const newCarrier: Carrier = {
       ...carrierData,
       id: `carrier${Date.now()}`,
       insurancePolicyExpirationDate: carrierData.insurancePolicyExpirationDate ? new Date(carrierData.insurancePolicyExpirationDate) : undefined,
+      fmcsaAuthorityStatus: 'Not Verified', 
+      fmcsaLastChecked: undefined,
     };
     setCarriers(prev => [...prev, newCarrier]);
     
-    // Placeholder for email notification
     console.log(`New carrier "${newCarrier.name}" (ID: ${newCarrier.id}) added. 
     TODO: Send email notification to onboard@freight1stdirect.com with carrier details:
     Name: ${newCarrier.name}
     MC#: ${newCarrier.mcNumber || 'N/A'}
     USDOT#: ${newCarrier.usDotNumber || 'N/A'}
     Contact: ${newCarrier.contactPerson} (${newCarrier.contactEmail}, ${newCarrier.contactPhone})`);
-    // In a real app, replace the above console.log with an API call to your backend to send the email.
   }, []);
 
   const updateCarrier = useCallback((updatedCarrierData: Carrier) => {
     const updatedCarrier = {
       ...updatedCarrierData,
       insurancePolicyExpirationDate: updatedCarrierData.insurancePolicyExpirationDate ? new Date(updatedCarrierData.insurancePolicyExpirationDate) : undefined,
+      fmcsaLastChecked: updatedCarrierData.fmcsaLastChecked ? new Date(updatedCarrierData.fmcsaLastChecked) : undefined,
     };
     setCarriers(prev => prev.map(c => (c.id === updatedCarrier.id ? updatedCarrier : c)));
   }, []);
 
   const removeCarrier = useCallback((carrierId: string) => {
     setCarriers(prev => prev.filter(c => c.id !== carrierId));
-    // Also consider implications for trucks assigned to this carrier
-    setTrucks(prev => prev.map(t => t.carrierId === carrierId ? {...t, carrierId: ''} : t)); // Example: unassign or reassign
+    setTrucks(prev => prev.map(t => t.carrierId === carrierId ? {...t, carrierId: ''} : t)); 
     setAvailableEquipmentPosts(prev => prev.filter(p => p.carrierId !== carrierId));
+  }, []);
+
+  const verifyCarrierFmcsa = useCallback(async (carrierId: string): Promise<FmcsaAuthorityStatus> => {
+    return new Promise((resolve) => {
+      setCarriers(prev => prev.map(c => 
+        c.id === carrierId ? { ...c, fmcsaAuthorityStatus: 'Pending Verification' } : c
+      ));
+
+      // Simulate API call delay
+      setTimeout(() => {
+        const randomOutcome = Math.random();
+        let status: FmcsaAuthorityStatus;
+        if (randomOutcome < 0.7) { // 70% chance of success
+          status = Math.random() < 0.9 ? 'Verified Active' : 'Verified Inactive'; // 90% of success is Active
+        } else {
+          status = 'Verification Failed';
+        }
+        
+        setCarriers(prev => prev.map(c => 
+          c.id === carrierId ? { ...c, fmcsaAuthorityStatus: status, fmcsaLastChecked: new Date() } : c
+        ));
+        resolve(status);
+      }, 1500); // 1.5 second delay
+    });
   }, []);
   
   const addScheduleEntry = useCallback((entry: Omit<ScheduleEntry, 'id'>): ScheduleEntry => {
@@ -345,7 +372,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
   const removeShipper = useCallback((shipperId: string) => {
     setShippers(prev => prev.filter(s => s.id !== shipperId));
-    // Optionally, handle related broker loads (e.g., disassociate or delete)
   }, []);
 
   // BrokerLoad CRUD
@@ -355,7 +381,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         id: `bload${Date.now()}`, 
         postedDate: new Date(), 
         status: 'Available' as BrokerLoadStatus, 
-        postedByBrokerId: 'brokerUser1', // Placeholder
+        postedByBrokerId: 'brokerUser1', 
         pickupDate: new Date(load.pickupDate),
         deliveryDate: new Date(load.deliveryDate)
     };
@@ -390,7 +416,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const assignLoadToCarrierAndCreateSchedule = useCallback((loadId: string, carrierId: string, truckId: string, driverId?: string): BrokerLoad | undefined => {
     const load = brokerLoads.find(bl => bl.id === loadId);
     const truck = trucks.find(t => t.id === truckId && t.carrierId === carrierId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     const currentShipper = load ? shippers.find(s => s.id === load.shipperId) : undefined;
 
 
@@ -422,10 +447,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return updatedLoad;
     }
     return undefined;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brokerLoads, trucks, addScheduleEntry, updateBrokerLoad, shippers]);
 
 
-  // LoadDocument
    const addLoadDocument = useCallback((doc: Omit<LoadDocument, 'id' | 'uploadDate'>) => {
     const newDocument: LoadDocument = {
       ...doc,
@@ -436,7 +461,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setLoadDocuments(prev => [newDocument, ...prev]);
   }, []);
 
-  // AvailableEquipmentPost CRUD
   const addAvailableEquipmentPost = useCallback((postData: Omit<AvailableEquipmentPost, 'id' | 'postedDate' | 'status'>): AvailableEquipmentPost => {
     const newPost: AvailableEquipmentPost = {
       ...postData,
@@ -480,7 +504,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       shippers, brokerLoads, loadDocuments, availableEquipmentPosts,
       addTruck, updateTruck, removeTruck,
       addDriver, updateDriver, removeDriver,
-      addCarrier, updateCarrier, removeCarrier,
+      addCarrier, updateCarrier, removeCarrier, verifyCarrierFmcsa,
       addScheduleEntry, updateScheduleEntry, removeScheduleEntry,
       addDispatchFeeRecord, updateDispatchFeeRecordStatus,
       createInvoiceForCarrier, updateInvoiceStatus,
@@ -503,3 +527,4 @@ export function useAppData() {
   }
   return context;
 }
+
