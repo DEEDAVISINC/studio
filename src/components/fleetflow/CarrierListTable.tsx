@@ -4,8 +4,9 @@ import type { Carrier } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Trash2, Edit3, Eye } from "lucide-react";
+import { MoreHorizontal, Trash2, Edit3, Eye, Phone, Mail } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 
 interface CarrierListTableProps {
   carriers: Carrier[];
@@ -23,22 +24,38 @@ export function CarrierListTable({ carriers, onEdit, onDelete }: CarrierListTabl
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Contact Person</TableHead>
-          <TableHead>MC#</TableHead>
-          <TableHead>US DOT#</TableHead>
-          <TableHead>Availability</TableHead>
+          <TableHead>Legal Name / DBA</TableHead>
+          <TableHead>MC# / DOT#</TableHead>
+          <TableHead>Preferred Contact</TableHead>
+          <TableHead>Equipment</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {carriers.map((carrier) => (
           <TableRow key={carrier.id}>
-            <TableCell className="font-medium">{carrier.name}</TableCell>
-            <TableCell>{carrier.contactPerson}</TableCell>
-            <TableCell>{carrier.mcNumber || 'N/A'}</TableCell>
-            <TableCell>{carrier.usDotNumber || 'N/A'}</TableCell>
-            <TableCell className="max-w-xs truncate">{carrier.availabilityNotes || 'N/A'}</TableCell>
+            <TableCell className="font-medium">
+              <div>{carrier.name}</div>
+              {carrier.dba && <div className="text-xs text-muted-foreground">DBA: {carrier.dba}</div>}
+            </TableCell>
+            <TableCell>
+              <div>MC: {carrier.mcNumber || 'N/A'}</div>
+              <div className="text-xs text-muted-foreground">DOT: {carrier.usDotNumber || 'N/A'}</div>
+            </TableCell>
+            <TableCell>
+              <div>{carrier.contactPerson}</div>
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <Phone className="h-3 w-3"/> {carrier.contactPhone}
+              </div>
+               <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <Mail className="h-3 w-3"/> {carrier.contactEmail}
+              </div>
+            </TableCell>
+            <TableCell className="max-w-[200px] truncate">
+                {carrier.equipmentTypes ? carrier.equipmentTypes.split(',').map(eq => eq.trim()).map(eqt => (
+                    <Badge key={eqt} variant="secondary" className="mr-1 mb-1 text-xs">{eqt}</Badge>
+                )) : 'N/A'}
+            </TableCell>
             <TableCell className="text-right">
               <AlertDialog>
                 <DropdownMenu>

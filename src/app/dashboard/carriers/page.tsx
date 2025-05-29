@@ -18,7 +18,13 @@ export default function CarriersPage() {
     if (editingCarrier && 'id' in carrierData) {
       updateCarrier(carrierData as Carrier);
     } else {
-      addCarrier(carrierData as Omit<Carrier, 'id'>);
+      // Ensure all required fields for a new carrier are present, even if optional in the form initially
+      const newCarrierData = carrierData as Omit<Carrier, 'id'>;
+      // Add default for contractDetails if not provided, as it's non-optional in type
+      if (!newCarrierData.contractDetails) {
+        newCarrierData.contractDetails = "Awaiting details"; 
+      }
+      addCarrier(newCarrierData);
     }
     setEditingCarrier(null); // Reset editing state
   };

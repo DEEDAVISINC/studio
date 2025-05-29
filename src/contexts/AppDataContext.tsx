@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback } from 'react';
 import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus } from '@/lib/types';
-import { addDays } from 'date-fns';
+import { addDays, parseISO } from 'date-fns';
 
 
 interface AppDataContextType {
@@ -63,9 +63,9 @@ interface AppDataContextType {
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
 const initialTrucks: Truck[] = [
-  { id: 'truck1', name: 'Alpha Hauler', licensePlate: 'TRK-001', model: 'Volvo VNL', year: 2022, carrierId: 'carrier1', driverId: 'driver1', maintenanceStatus: 'Good', mc150DueDate: new Date('2025-06-15T00:00:00'), permitExpiryDate: new Date('2024-12-31T00:00:00'), taxDueDate: new Date('2024-09-30T00:00:00') },
-  { id: 'truck2', name: 'Beta Mover', licensePlate: 'TRK-002', model: 'Freightliner Cascadia', year: 2021, carrierId: 'carrier2', driverId: 'driver2', maintenanceStatus: 'Needs Service', mc150DueDate: new Date('2025-08-01T00:00:00') },
-  { id: 'truck3', name: 'Gamma Transporter', licensePlate: 'TRK-003', model: 'Peterbilt 579', year: 2023, carrierId: 'carrier1', maintenanceStatus: 'In Service', permitExpiryDate: new Date('2025-03-28T00:00:00') },
+  { id: 'truck1', name: 'Alpha Hauler', licensePlate: 'TRK-001', model: 'Volvo VNL', year: 2022, carrierId: 'carrier1', driverId: 'driver1', maintenanceStatus: 'Good', mc150DueDate: parseISO('2025-06-15T00:00:00'), permitExpiryDate: parseISO('2024-12-31T00:00:00'), taxDueDate: parseISO('2024-09-30T00:00:00') },
+  { id: 'truck2', name: 'Beta Mover', licensePlate: 'TRK-002', model: 'Freightliner Cascadia', year: 2021, carrierId: 'carrier2', driverId: 'driver2', maintenanceStatus: 'Needs Service', mc150DueDate: parseISO('2025-08-01T00:00:00') },
+  { id: 'truck3', name: 'Gamma Transporter', licensePlate: 'TRK-003', model: 'Peterbilt 579', year: 2023, carrierId: 'carrier1', maintenanceStatus: 'In Service', permitExpiryDate: parseISO('2025-03-28T00:00:00') },
 ];
 
 const initialDrivers: Driver[] = [
@@ -74,16 +74,52 @@ const initialDrivers: Driver[] = [
 ];
 
 const initialCarriers: Carrier[] = [
-  { id: 'carrier1', name: 'Speedy Logistics', contactPerson: 'Mike Ross', contactEmail: 'mike.ross@speedylog.com', contactPhone: '555-0001', contractDetails: 'Primary Carrier Agreement, expires 2025-12-31', mcNumber: 'MC123456', usDotNumber: 'USDOT987654', availabilityNotes: 'Available Mon-Fri, national coverage.' },
-  { id: 'carrier2', name: 'Reliable Transport Inc.', contactPerson: 'Sarah Connor', contactEmail: 's.connor@reliabletransport.com', contactPhone: '555-0002', contractDetails: 'Secondary Carrier, flexible terms', mcNumber: 'MC654321', usDotNumber: 'USDOT123789', availabilityNotes: 'Weekend availability, regional only.' },
+  { 
+    id: 'carrier1', 
+    name: 'Speedy Logistics', 
+    dba: 'SpeedyLog',
+    mcNumber: 'MC123456', 
+    usDotNumber: 'USDOT987654', 
+    taxIdEin: '12-3456789',
+    companyPhone: '555-0001',
+    companyEmail: 'info@speedylog.com',
+    physicalAddress: '123 Main St, Anytown, USA 12345',
+    contactPerson: 'Mike Ross', 
+    contactEmail: 'mike.ross@speedylog.com', 
+    contactPhone: '555-0011', 
+    equipmentTypes: '53ft Dry Van, Reefer',
+    insuranceCompanyName: 'SecureTruck Insurance',
+    insurancePolicyNumber: 'POL98765',
+    insurancePolicyExpirationDate: parseISO('2025-10-31T00:00:00'),
+    paymentTerms: 'Net 30',
+    contractDetails: 'Primary Carrier Agreement, expires 2025-12-31', 
+    availabilityNotes: 'Available Mon-Fri, national coverage.',
+    preferredLanes: 'CA to TX, IL to FL'
+  },
+  { 
+    id: 'carrier2', 
+    name: 'Reliable Transport Inc.', 
+    mcNumber: 'MC654321', 
+    usDotNumber: 'USDOT123789', 
+    companyPhone: '555-0002',
+    companyEmail: 'contact@reliabletransport.com',
+    physicalAddress: '456 Industrial Ave, Otherville, USA 67890',
+    contactPerson: 'Sarah Connor', 
+    contactEmail: 's.connor@reliabletransport.com', 
+    contactPhone: '555-0022', 
+    equipmentTypes: 'Flatbed, Power Only',
+    contractDetails: 'Secondary Carrier, flexible terms', 
+    availabilityNotes: 'Weekend availability, regional only.' 
+  },
 ];
 
+
 const initialScheduleEntries: ScheduleEntry[] = [
-  { id: 'sch1', truckId: 'truck1', driverId: 'driver1', title: 'Delivery to LA', start: new Date('2025-07-20T10:00:00Z'), end: new Date('2025-07-21T18:00:00Z'), origin: 'Phoenix, AZ', destination: 'Los Angeles, CA', loadValue: 2500.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery' },
-  { id: 'sch2', truckId: 'truck2', driverId: 'driver2', title: 'Pickup from Dallas', start: new Date('2025-07-22T09:00:00Z'), end: new Date('2025-07-22T17:00:00Z'), origin: 'Houston, TX', destination: 'Dallas, TX', loadValue: 1800.50, notes: 'Handle with care', color: 'hsl(var(--accent))', scheduleType: 'Pickup' },
-  { id: 'sch3', truckId: 'truck1', title: 'Maintenance Check', start: new Date('2025-07-24T14:00:00Z'), end: new Date('2025-07-24T16:00:00Z'), origin: 'Base', destination: 'Garage', color: 'hsl(var(--destructive))', scheduleType: 'Maintenance', notes: 'Oil change and tire rotation' },
-  { id: 'sch4', truckId: 'truck1', driverId: 'driver1', title: 'Long Haul to NY', start: new Date('2025-07-26T08:00:00Z'), end: new Date('2025-07-29T17:00:00Z'), origin: 'Los Angeles, CA', destination: 'New York, NY', loadValue: 5500.75, notes: 'High value goods', color: 'hsl(var(--primary))', scheduleType: 'Delivery' },
-  { id: 'sch5', truckId: 'truck3', driverId: 'driver1', title: 'Local Delivery', start: new Date('2025-08-01T09:00:00Z'), end: new Date('2025-08-01T15:00:00Z'), origin: 'Warehouse A', destination: 'Customer Site B', loadValue: 750.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery' },
+  { id: 'sch1', truckId: 'truck1', driverId: 'driver1', title: 'Delivery to LA', start: parseISO('2025-07-20T10:00:00Z'), end: parseISO('2025-07-21T18:00:00Z'), origin: 'Phoenix, AZ', destination: 'Los Angeles, CA', loadValue: 2500.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery' },
+  { id: 'sch2', truckId: 'truck2', driverId: 'driver2', title: 'Pickup from Dallas', start: parseISO('2025-07-22T09:00:00Z'), end: parseISO('2025-07-22T17:00:00Z'), origin: 'Houston, TX', destination: 'Dallas, TX', loadValue: 1800.50, notes: 'Handle with care', color: 'hsl(var(--accent))', scheduleType: 'Pickup' },
+  { id: 'sch3', truckId: 'truck1', title: 'Maintenance Check', start: parseISO('2025-07-24T14:00:00Z'), end: parseISO('2025-07-24T16:00:00Z'), origin: 'Base', destination: 'Garage', color: 'hsl(var(--destructive))', scheduleType: 'Maintenance', notes: 'Oil change and tire rotation' },
+  { id: 'sch4', truckId: 'truck1', driverId: 'driver1', title: 'Long Haul to NY', start: parseISO('2025-07-26T08:00:00Z'), end: parseISO('2025-07-29T17:00:00Z'), origin: 'Los Angeles, CA', destination: 'New York, NY', loadValue: 5500.75, notes: 'High value goods', color: 'hsl(var(--primary))', scheduleType: 'Delivery' },
+  { id: 'sch5', truckId: 'truck3', driverId: 'driver1', title: 'Local Delivery', start: parseISO('2025-08-01T09:00:00Z'), end: parseISO('2025-08-01T15:00:00Z'), origin: 'Warehouse A', destination: 'Customer Site B', loadValue: 750.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery' },
 ];
 
 const initialShippers: Shipper[] = [
@@ -93,16 +129,16 @@ const initialShippers: Shipper[] = [
 
 const initialBrokerLoads: BrokerLoad[] = [
     {
-        id: 'bload1', shipperId: 'shipper1', postedByBrokerId: 'brokerUser1', postedDate: new Date('2025-07-15T09:00:00Z'),
+        id: 'bload1', shipperId: 'shipper1', postedByBrokerId: 'brokerUser1', postedDate: parseISO('2025-07-15T09:00:00Z'),
         originAddress: '123 Commerce St, Anytown, USA', destinationAddress: '789 Market Ave, Otherville, USA',
-        pickupDate: new Date('2025-07-20T10:00:00Z'), deliveryDate: new Date('2025-07-21T17:00:00Z'),
+        pickupDate: parseISO('2025-07-20T10:00:00Z'), deliveryDate: parseISO('2025-07-21T17:00:00Z'),
         commodity: 'General Electronics', weight: 22000, equipmentType: '53ft Dry Van', offeredRate: 1800,
         status: 'Available', notes: 'Team driving preferred for quick delivery.'
     },
     {
-        id: 'bload2', shipperId: 'shipper2', postedByBrokerId: 'brokerUser1', postedDate: new Date('2025-07-16T11:00:00Z'),
+        id: 'bload2', shipperId: 'shipper2', postedByBrokerId: 'brokerUser1', postedDate: parseISO('2025-07-16T11:00:00Z'),
         originAddress: '456 Farm Rd, Countryside, USA', destinationAddress: '321 Distribution Way, Bigcity, USA',
-        pickupDate: new Date('2025-07-22T08:00:00Z'), deliveryDate: new Date('2025-07-22T14:00:00Z'),
+        pickupDate: parseISO('2025-07-22T08:00:00Z'), deliveryDate: parseISO('2025-07-22T14:00:00Z'),
         commodity: 'Fresh Strawberries', weight: 18000, equipmentType: 'Reefer (-10C)', offeredRate: 2200,
         status: 'Available', notes: 'Temperature must be monitored.'
     }
@@ -122,11 +158,26 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
 
   const addTruck = useCallback((truck: Omit<Truck, 'id'>) => {
-    setTrucks(prev => [...prev, { ...truck, id: `truck${Date.now()}` }]);
+    const newTruckData = {
+        ...truck,
+        id: `truck${Date.now()}`,
+        mc150DueDate: truck.mc150DueDate ? new Date(truck.mc150DueDate) : undefined,
+        permitExpiryDate: truck.permitExpiryDate ? new Date(truck.permitExpiryDate) : undefined,
+        taxDueDate: truck.taxDueDate ? new Date(truck.taxDueDate) : undefined,
+    };
+    setTrucks(prev => [...prev, newTruckData]);
   }, []);
+
   const updateTruck = useCallback((updatedTruck: Truck) => {
-    setTrucks(prev => prev.map(t => t.id === updatedTruck.id ? updatedTruck : t));
+    const newTruckData = {
+        ...updatedTruck,
+        mc150DueDate: updatedTruck.mc150DueDate ? new Date(updatedTruck.mc150DueDate) : undefined,
+        permitExpiryDate: updatedTruck.permitExpiryDate ? new Date(updatedTruck.permitExpiryDate) : undefined,
+        taxDueDate: updatedTruck.taxDueDate ? new Date(updatedTruck.taxDueDate) : undefined,
+    };
+    setTrucks(prev => prev.map(t => t.id === updatedTruck.id ? newTruckData : t));
   }, []);
+
   const removeTruck = useCallback((truckId: string) => {
     setTrucks(prev => prev.filter(t => t.id !== truckId));
     setScheduleEntries(prev => prev.filter(s => s.truckId !== truckId)); 
@@ -144,23 +195,37 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setScheduleEntries(prev => prev.map(s => s.driverId === driverId ? { ...s, driverId: undefined } : s));
   }, []);
 
-  const addCarrier = useCallback((carrier: Omit<Carrier, 'id'>) => {
-    setCarriers(prev => [...prev, { ...carrier, id: `carrier${Date.now()}` }]);
+ const addCarrier = useCallback((carrierData: Omit<Carrier, 'id'>) => {
+    const newCarrier = {
+      ...carrierData,
+      id: `carrier${Date.now()}`,
+      insurancePolicyExpirationDate: carrierData.insurancePolicyExpirationDate ? new Date(carrierData.insurancePolicyExpirationDate) : undefined,
+    };
+    setCarriers(prev => [...prev, newCarrier]);
   }, []);
-  const updateCarrier = useCallback((updatedCarrier: Carrier) => {
-    setCarriers(prev => prev.map(c => c.id === updatedCarrier.id ? updatedCarrier : c));
+
+  const updateCarrier = useCallback((updatedCarrierData: Carrier) => {
+    const updatedCarrier = {
+      ...updatedCarrierData,
+      insurancePolicyExpirationDate: updatedCarrierData.insurancePolicyExpirationDate ? new Date(updatedCarrierData.insurancePolicyExpirationDate) : undefined,
+    };
+    setCarriers(prev => prev.map(c => (c.id === updatedCarrier.id ? updatedCarrier : c)));
   }, []);
+
   const removeCarrier = useCallback((carrierId: string) => {
     setCarriers(prev => prev.filter(c => c.id !== carrierId));
+    // Also consider implications for trucks assigned to this carrier
+    setTrucks(prev => prev.map(t => t.carrierId === carrierId ? {...t, carrierId: ''} : t)); // Example: unassign or reassign
   }, []);
   
   const addScheduleEntry = useCallback((entry: Omit<ScheduleEntry, 'id'>): ScheduleEntry => {
-    const newEntry = { ...entry, id: `sch${Date.now()}` };
+    const newEntry = { ...entry, id: `sch${Date.now()}`, start: new Date(entry.start), end: new Date(entry.end) };
     setScheduleEntries(prev => [...prev, newEntry]);
     return newEntry;
   }, []);
   const updateScheduleEntry = useCallback((updatedEntry: ScheduleEntry) => {
-    setScheduleEntries(prev => prev.map(s => s.id === updatedEntry.id ? updatedEntry : s));
+     const entryWithDates = { ...updatedEntry, start: new Date(updatedEntry.start), end: new Date(updatedEntry.end) };
+    setScheduleEntries(prev => prev.map(s => s.id === updatedEntry.id ? entryWithDates : s));
   }, []);
   const removeScheduleEntry = useCallback((entryId: string) => {
     setScheduleEntries(prev => prev.filter(s => s.id !== entryId));
@@ -234,19 +299,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   // BrokerLoad CRUD
   const addBrokerLoad = useCallback((load: Omit<BrokerLoad, 'id' | 'postedDate' | 'status' | 'postedByBrokerId'>): BrokerLoad => {
-    // In a real app, postedByBrokerId would come from the logged-in user
-    const newLoad = { ...load, id: `bload${Date.now()}`, postedDate: new Date(), status: 'Available' as BrokerLoadStatus, postedByBrokerId: 'brokerUser1' };
+    const newLoad = { 
+        ...load, 
+        id: `bload${Date.now()}`, 
+        postedDate: new Date(), 
+        status: 'Available' as BrokerLoadStatus, 
+        postedByBrokerId: 'brokerUser1', // Placeholder
+        pickupDate: new Date(load.pickupDate),
+        deliveryDate: new Date(load.deliveryDate)
+    };
     setBrokerLoads(prev => [newLoad, ...prev]);
     return newLoad;
   }, []);
   const updateBrokerLoad = useCallback((updatedLoad: BrokerLoad) => {
-    setBrokerLoads(prev => prev.map(bl => bl.id === updatedLoad.id ? updatedLoad : bl));
+     const loadWithDates = {
+        ...updatedLoad,
+        pickupDate: new Date(updatedLoad.pickupDate),
+        deliveryDate: new Date(updatedLoad.deliveryDate),
+     };
+    setBrokerLoads(prev => prev.map(bl => bl.id === loadWithDates.id ? loadWithDates : bl));
   }, []);
 
   const updateBrokerLoadStatus = useCallback((loadId: string, status: BrokerLoadStatus, carrierId?: string, truckId?: string, driverId?: string) => {
     setBrokerLoads(prev => prev.map(bl => {
       if (bl.id === loadId) {
-        const updatedLoad = { ...bl, status };
+        const updatedLoad: BrokerLoad = { ...bl, status };
         if (carrierId) updatedLoad.assignedCarrierId = carrierId;
         if (truckId) updatedLoad.assignedTruckId = truckId;
         if (driverId) updatedLoad.assignedDriverId = driverId;
@@ -274,37 +351,33 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       };
       updateBrokerLoad(updatedLoad);
 
-      // Auto-create ScheduleEntry
       addScheduleEntry({
         truckId: truckId,
         driverId: driverId,
         title: `Broker Load: ${load.commodity} (${load.originAddress} to ${load.destinationAddress})`,
-        start: new Date(load.pickupDate), // Ensure pickupDate is a Date object or parsable string
-        end: new Date(load.deliveryDate),   // Ensure deliveryDate is a Date object or parsable string
+        start: new Date(load.pickupDate), 
+        end: new Date(load.deliveryDate),   
         origin: load.originAddress,
         destination: load.destinationAddress,
         loadValue: load.offeredRate,
         notes: `Broker Load ID: ${load.id}. Shipper: ${getShipperById(load.shipperId)?.name || 'N/A'}. Confirmation: ${updatedLoad.confirmationNumber}`,
-        scheduleType: 'Delivery', // Default to delivery
-        color: 'hsl(260, 80%, 60%)', // A distinct color for broker loads, e.g., purple
+        scheduleType: 'Delivery', 
+        color: 'hsl(260, 80%, 60%)', 
         brokerLoadId: load.id,
       });
       return updatedLoad;
     }
     return undefined;
-  }, [brokerLoads, trucks, addScheduleEntry, updateBrokerLoad]);
+  }, [brokerLoads, trucks, addScheduleEntry, updateBrokerLoad, shippers]); // Added shippers to dependency array for getShipperById
 
 
   // LoadDocument
    const addLoadDocument = useCallback((doc: Omit<LoadDocument, 'id' | 'uploadDate'>) => {
-    // Simulate document upload
     const newDocument: LoadDocument = {
       ...doc,
       id: `doc${Date.now()}`,
       uploadDate: new Date(),
-      // In a real app, uploadedBy would be the current user's ID
-      // fileUrl would be set after actual file upload to a storage service
-      fileUrl: `simulated_path/to/${doc.documentName}`, 
+      fileUrl: `simulated_path/to/${doc.documentName.replace(/\s+/g, '_')}`, 
     };
     setLoadDocuments(prev => [newDocument, ...prev]);
   }, []);

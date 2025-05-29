@@ -23,15 +23,44 @@ export interface Driver {
 
 export interface Carrier {
   id: string;
-  name: string;
-  contactPerson: string;
-  contactEmail: string;
-  contactPhone: string;
-  contractDetails: string;
-  mcNumber?: string; 
-  usDotNumber?: string; 
-  availabilityNotes?: string; 
+  name: string; // Legal Company Name
+  dba?: string; // Doing Business As
+  mcNumber?: string;
+  usDotNumber?: string;
+  taxIdEin?: string;
+
+  companyPhone?: string;
+  faxNumber?: string;
+  companyEmail?: string;
+
+  physicalAddress?: string;
+  mailingAddress?: string;
+  isMailingSameAsPhysical?: boolean; // For UI logic
+
+  contactPerson: string; // Preferred Contact Person
+  contactEmail: string; // Preferred Contact Email
+  contactPhone: string; // Preferred Contact Phone
+
+  equipmentTypes?: string; // e.g., "Van, Reefer, Flatbed"
+  
+  insuranceCompanyName?: string;
+  insurancePolicyNumber?: string;
+  insurancePolicyExpirationDate?: Date | string;
+  insuranceAgentName?: string;
+  insuranceAgentPhone?: string;
+  insuranceAgentEmail?: string;
+
+  factoringCompanyName?: string;
+  factoringCompanyContact?: string; // Person
+  factoringCompanyPhone?: string;
+  
+  paymentTerms?: string; // e.g., "Net 30", "Quick Pay 2%"
+  preferredLanes?: string;
+  
+  contractDetails: string; // Existing field, can be used for general contract notes
+  availabilityNotes?: string; // Existing field, can be used for special instructions
 }
+
 
 export type ScheduleType = 'Delivery' | 'Maintenance' | 'Pickup' | 'Other'; 
 export const SCHEDULE_TYPES: ScheduleType[] = ['Delivery', 'Maintenance', 'Pickup', 'Other']; 
