@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DollarSign, FileText, Users } from "lucide-react";
+import { DollarSign, FileText, Users, AlertCircle } from "lucide-react"; // Added AlertCircle
 import { CreateDispatchFeeList } from '@/components/fleetflow/CreateDispatchFeeList';
 import { CarrierInvoicing } from '@/components/fleetflow/CarrierInvoicing';
 import { useAppData } from '@/contexts/AppDataContext';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Added Alert components
 
 export default function DispatchCentralPage() {
   const { scheduleEntries, trucks, carriers, dispatchFeeRecords, addDispatchFeeRecord, getTruckById, getCarrierById, createInvoiceForCarrier, invoices, getScheduleEntryById, updateInvoiceStatus } = useAppData();
@@ -25,6 +26,15 @@ export default function DispatchCentralPage() {
           </p>
         </div>
       </div>
+
+      <Alert variant="default" className="bg-accent/10 border-accent/50 text-accent-foreground shadow-md">
+        <AlertCircle className="h-5 w-5 text-accent" />
+        <AlertTitle className="font-semibold text-accent">Important Invoice Schedule</AlertTitle>
+        <AlertDescription className="text-accent/90">
+          All dispatch invoices must be sent out to carriers by **Monday** of each week.
+          Payment for these invoices is due by **Wednesday** of the same week to ensure carriers remain eligible for new bookable loads.
+        </AlertDescription>
+      </Alert>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:w-1/2">
