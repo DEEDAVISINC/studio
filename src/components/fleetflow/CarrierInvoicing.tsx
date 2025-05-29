@@ -1,13 +1,13 @@
 
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Carrier, DispatchFeeRecord, Invoice, ScheduleEntry } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, AlertTriangle } from "lucide-react";
-import { format, isPast, startOfWeek, addDays, getDay } from "date-fns";
+import { format, isPast, startOfWeek, endOfWeek, subWeeks, addDays, getDay, isWithinInterval } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { ViewInvoiceDialog } from './ViewInvoiceDialog';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -42,6 +42,16 @@ export function CarrierInvoicing({
     setHasMounted(true);
   }, []);
 
+  const { previousWeekStart, previousWeekEnd } = useMemo(() => {
+    if (!hasMounted) return { previousWeekStart: null, previousWeekEnd: null };
+    const today = new Date();
+    const startOfCurrentWeekSunday = startOfWeek(today, { weekStartsOn: 0 }); // Current week's Sunday
+    const pWeekStart = subWeeks(startOfCurrentWeekSunday, 1); // Previous week's Sunday
+    const pWeekEnd = endOfWeek(pWeekStart, { weekStartsOn: 0 }); // Previous week's Saturday
+    return { previousWeekStart: pWeekStart, previousWeekEnd: pWeekEnd };
+  }, [hasMounted]);
+
+
   useEffect(() => {
     if (!hasMounted || !selectedCarrierId) {
       setHasCriticallyOverduePayments(false);
@@ -57,13 +67,8 @@ export function CarrierInvoicing({
 
     for (const inv of carrierSentInvoices) {
       const dueDate = new Date(inv.dueDate);
-      
-      // Determine Wednesday of the week of the invoice's due date
-      // Assuming week starts on Monday (1 for date-fns getDay, Monday is 1)
       const mondayOfDueDateWeek = startOfWeek(dueDate, { weekStartsOn: 1 });
-      const wednesdayOfDueDateWeek = addDays(mondayOfDueDateWeek, 2); // Wednesday 00:00:00
-      
-      // End of that Wednesday
+      const wednesdayOfDueDateWeek = addDays(mondayOfDueDateWeek, 2); 
       const endOfPaymentWednesday = new Date(
         wednesdayOfDueDateWeek.getFullYear(),
         wednesdayOfDueDateWeek.getMonth(),
@@ -81,15 +86,26 @@ export function CarrierInvoicing({
   }, [selectedCarrierId, invoices, hasMounted]);
 
 
-  const pendingFeesForSelectedCarrier = selectedCarrierId
-    ? dispatchFeeRecords.filter(fee => fee.carrierId === selectedCarrierId && fee.status === 'Pending')
-    : [];
+  const pendingFeesForSelectedCarrier = useMemo(() => {
+    if (!selectedCarrierId || !hasMounted || !previousWeekStart || !previousWeekEnd) return [];
+
+    return dispatchFeeRecords.filter(fee => {
+      if (fee.carrierId !== selectedCarrierId || fee.status !== 'Pending') return false;
+      
+      const scheduleEntry = getScheduleEntryById(fee.scheduleEntryId);
+      if (!scheduleEntry) return false;
+
+      const scheduleEndDate = new Date(scheduleEntry.end);
+      return isWithinInterval(scheduleEndDate, { start: previousWeekStart, end: previousWeekEnd });
+    });
+  }, [selectedCarrierId, dispatchFeeRecords, getScheduleEntryById, hasMounted, previousWeekStart, previousWeekEnd]);
+
 
   const handleGenerateInvoice = () => {
     if (!selectedCarrierId || pendingFeesForSelectedCarrier.length === 0) {
       toast({
         title: "Cannot Generate Invoice",
-        description: "Please select a carrier with pending fees.",
+        description: "Please select a carrier with pending fees from the previous week.",
         variant: "destructive",
       });
       return;
@@ -138,7 +154,7 @@ export function CarrierInvoicing({
         </div>
         {selectedCarrierId && pendingFeesForSelectedCarrier.length > 0 && (
            <Button onClick={handleGenerateInvoice} className="w-full md:w-auto bg-primary hover:bg-primary/90">
-            <FileText className="mr-2 h-4 w-4" /> Generate Invoice for Pending Fees
+            <FileText className="mr-2 h-4 w-4" /> Generate Invoice for Previous Week
           </Button>
         )}
       </div>
@@ -158,17 +174,23 @@ export function CarrierInvoicing({
         <>
           <Card>
             <CardHeader>
-              <CardTitle>Pending Dispatch Fees for {getCarrierById(selectedCarrierId)?.name || 'Selected Carrier'}</CardTitle>
-              <CardDescription>These fees are ready to be invoiced.</CardDescription>
+              <CardTitle>Pending Fees for {getCarrierById(selectedCarrierId)?.name || 'Selected Carrier'} (Previous Week)</CardTitle>
+              <CardDescription>
+                {hasMounted && previousWeekStart && previousWeekEnd 
+                  ? `Showing fees for loads completed between ${format(previousWeekStart, 'P')} and ${format(previousWeekEnd, 'P')}.`
+                  : "Calculating previous week's loads..."}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {pendingFeesForSelectedCarrier.length > 0 ? (
+              {!hasMounted ? (
+                <p className="text-muted-foreground text-center py-4">Loading eligible fees...</p>
+              ) : pendingFeesForSelectedCarrier.length > 0 ? (
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Load</TableHead>
-                        <TableHead>Calculated Date</TableHead>
+                        <TableHead>Completion Date</TableHead>
                         <TableHead>Original Load Amount</TableHead>
                         <TableHead className="text-right">Fee (10%)</TableHead>
                       </TableRow>
@@ -179,7 +201,7 @@ export function CarrierInvoicing({
                         return (
                           <TableRow key={fee.id}>
                             <TableCell className="font-medium">{scheduleEntry?.title || 'N/A'}</TableCell>
-                            <TableCell>{hasMounted ? format(new Date(fee.calculatedDate), 'P p') : '...'}</TableCell>
+                            <TableCell>{scheduleEntry ? format(new Date(scheduleEntry.end), 'P') : '...'}</TableCell>
                             <TableCell>{fee.originalLoadAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
                             <TableCell className="text-right">{fee.feeAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
                           </TableRow>
@@ -191,7 +213,7 @@ export function CarrierInvoicing({
               ) : (
                 <div className="text-center py-6 text-muted-foreground">
                   <AlertTriangle className="mx-auto h-10 w-10 mb-2 text-yellow-500" />
-                  No pending dispatch fees for this carrier.
+                  No pending dispatch fees for this carrier from the previous week.
                 </div>
               )}
             </CardContent>
@@ -255,3 +277,5 @@ export function CarrierInvoicing({
   );
 }
 
+
+    
