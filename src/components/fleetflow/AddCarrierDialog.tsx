@@ -333,7 +333,7 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
           <FormSectionTitle title="Equipment & Insurance" />
            <div>
               <Label htmlFor="equipmentTypes" className="text-foreground">Equipment Types</Label>
-              <Input id="equipmentTypes" {...form.register("equipmentTypes")} className="mt-1 bg-background border-border focus:ring-primary" placeholder="e.g., Van, Reefer, Flatbed" />
+              <Input id="equipmentTypes" {...form.register("equipmentTypes")} className="mt-1 bg-background border-border focus:ring-primary" placeholder="e.g., Van, Reefer, Flatbed (comma-separated)" />
             </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
@@ -425,3 +425,5 @@ export function AddCarrierDialog({ isOpen, onOpenChange, onAddCarrier, carrierTo
     </Dialog>
   );
 }
+
+      
