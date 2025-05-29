@@ -140,7 +140,7 @@ Delivery Date: ${format(new Date(load.deliveryDate), 'PPP p')}
 Equipment: ${load.equipmentType}
 Offered Rate: $${load.offeredRate.toLocaleString()}
 ${load.weight ? `Weight: ${load.weight} lbs\n` : ''}${load.dims ? `Dimensions: ${load.dims}\n` : ''}
-Shipper: ${shipper?.name || 'N/A'} (${shipper?.contactPerson || 'N/A'}, ${shipper?.contactPhone || 'N/A'})
+Shipper Name: ${shipper?.name || 'N/A'}
 Notes: ${load.notes || 'N/A'}
 Status: ${load.status}
 Load ID: ${load.id}
