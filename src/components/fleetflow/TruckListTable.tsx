@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { format, parseISO, isPast, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useState, useEffect } from "react";
 
 interface TruckListTableProps {
   trucks: Truck[];
@@ -20,6 +21,11 @@ interface TruckListTableProps {
 }
 
 export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: TruckListTableProps) {
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
   
   const getDriverName = (driverId?: string) => drivers.find(d => d.id === driverId)?.name || 'Unassigned';
   const getCarrierName = (carrierId: string) => carriers.find(c => c.id === carrierId)?.name || 'N/A';
@@ -34,17 +40,27 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
   };
 
   const formatDate = (dateInput?: Date | string): string => {
-    if (!dateInput) return 'N/A';
+    if (!hasMounted || !dateInput) return '...';
     const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput;
-    return format(date, 'MMM d, yyyy');
+    try {
+        return format(date, 'MMM d, yyyy');
+    } catch (e) {
+        // console.error("Error formatting date:", dateInput, e);
+        return 'Invalid Date';
+    }
   };
 
   const getDateColor = (dateInput?: Date | string): string => {
-    if (!dateInput) return 'text-muted-foreground';
-    const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput;
-    if (isPast(date)) return 'text-destructive font-semibold';
-    if (differenceInDays(date, new Date()) < 30) return 'text-yellow-600 font-semibold'; // Using Tailwind yellow
-    return 'text-foreground';
+    if (!hasMounted || !dateInput) return 'text-muted-foreground';
+    try {
+        const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput;
+        if (isPast(date)) return 'text-destructive font-semibold';
+        if (differenceInDays(date, new Date()) < 30) return 'text-yellow-600 font-semibold';
+        return 'text-foreground';
+    } catch (e) {
+        // console.error("Error processing date for color:", dateInput, e);
+        return 'text-muted-foreground';
+    }
   };
   
   if (trucks.length === 0) {
@@ -89,7 +105,7 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <span className="flex items-center gap-1">
-                            {truck.mc150DueDate && <CalendarClock className="h-3 w-3" />}
+                            {hasMounted && truck.mc150DueDate && <CalendarClock className="h-3 w-3" />}
                             {formatDate(truck.mc150DueDate)}
                         </span>
                     </TooltipTrigger>
@@ -100,7 +116,7 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <span className="flex items-center gap-1">
-                             {truck.permitExpiryDate && <CalendarClock className="h-3 w-3" />}
+                             {hasMounted && truck.permitExpiryDate && <CalendarClock className="h-3 w-3" />}
                             {formatDate(truck.permitExpiryDate)}
                         </span>
                     </TooltipTrigger>
@@ -111,7 +127,7 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <span className="flex items-center gap-1">
-                            {truck.taxDueDate && <CalendarClock className="h-3 w-3" />}
+                            {hasMounted && truck.taxDueDate && <CalendarClock className="h-3 w-3" />}
                             {formatDate(truck.taxDueDate)}
                         </span>
                     </TooltipTrigger>
@@ -165,4 +181,3 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
     </TooltipProvider>
   );
 }
-
