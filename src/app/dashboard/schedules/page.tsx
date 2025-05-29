@@ -59,7 +59,7 @@ export default function SchedulesPage() {
     <div className="space-y-6 h-full flex flex-col">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Truck Schedules</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Truck Scheduler</h1>
           <p className="text-muted-foreground">View and manage truck schedules in the calendar.</p>
         </div>
         <div className="flex items-center gap-2">

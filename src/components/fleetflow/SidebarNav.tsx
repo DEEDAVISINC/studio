@@ -27,7 +27,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: '/dashboard/overview', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/trucks', label: 'Trucks', icon: Truck },
-  { href: '/dashboard/schedules', label: 'Schedules', icon: CalendarDays },
+  { href: '/dashboard/schedules', label: 'Truck Scheduler', icon: CalendarDays },
   { href: '/dashboard/drivers', label: 'Drivers', icon: Users },
   { href: '/dashboard/carriers', label: 'Carriers', icon: Briefcase },
   { href: '/dashboard/broker-box', label: 'Broker Box', icon: PackagePlus },
