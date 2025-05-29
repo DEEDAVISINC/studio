@@ -7,10 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-import { ThumbsUp, MapPin, CalendarDays, TruckIcon as EqIcon, DollarSign, ClipboardList, UserCheck, AlertTriangle } from "lucide-react";
+import { ThumbsUp, MapPin, CalendarDays, TruckIcon as EqIcon, DollarSign, ClipboardList, UserCheck, AlertTriangle, XCircle } from "lucide-react"; // Added XCircle
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface AvailableBrokerLoadsProps {
   brokerLoads: BrokerLoad[]; // Should already be filtered for 'Available' status
@@ -37,11 +38,12 @@ export function AvailableBrokerLoads({
 
   const availableTrucksForSelectedCarrier = trucks.filter(t => t.carrierId === selectedCarrierId && t.maintenanceStatus === 'Good');
   const availableDriversForSelectedCarrier = drivers.filter(d => {
-    // A driver is available if they are not currently assigned to a truck OR if their assigned truck belongs to the selected carrier
-    // This logic might need refinement based on how driver assignment to trucks works
     const truckTheyDrive = trucks.find(t => t.driverId === d.id);
     return !truckTheyDrive || truckTheyDrive.carrierId === selectedCarrierId;
   });
+
+  const selectedCarrierObject = carriers.find(c => c.id === selectedCarrierId);
+  const isSelectedCarrierBookable = selectedCarrierObject?.isBookable ?? false;
 
 
   const handleAcceptLoad = () => {
@@ -49,15 +51,21 @@ export function AvailableBrokerLoads({
       toast({ title: "Missing Information", description: "Please select a carrier and a truck.", variant: "destructive" });
       return;
     }
+    if (!isSelectedCarrierBookable) {
+      toast({ title: "Carrier Unbookable", description: `${selectedCarrierObject?.name || 'Selected carrier'} is not bookable due to overdue payments.`, variant: "destructive" });
+      return;
+    }
+
     const acceptedLoad = onAcceptLoad(selectedLoadToAccept.id, selectedCarrierId, selectedTruckId, selectedDriverId || undefined);
     if (acceptedLoad) {
-        toast({ title: "Load Accepted!", description: `Load ${acceptedLoad.commodity} assigned to Carrier ID ${selectedCarrierId}. A schedule entry has been created.` });
+        toast({ title: "Load Accepted!", description: `Load ${acceptedLoad.commodity} assigned to ${selectedCarrierObject?.name}. A schedule entry has been created.` });
         setSelectedLoadToAccept(null); // Close dialog
         setSelectedCarrierId('');
         setSelectedTruckId('');
         setSelectedDriverId('');
     } else {
-        toast({ title: "Acceptance Failed", description: "Could not accept the load. It might no longer be available or truck is invalid.", variant: "destructive" });
+        // Error toast is handled by AppDataContext if schedule conflict
+        // If it's another reason (e.g. load not available), can add a toast here.
     }
   };
   
@@ -119,8 +127,14 @@ Load ID: ${load.id}
                 <ClipboardList className="mr-2 h-4 w-4" /> Copy Info
               </Button>
               <Dialog open={selectedLoadToAccept?.id === load.id} onOpenChange={(isOpen) => {
-                if (!isOpen) setSelectedLoadToAccept(null);
-                else setSelectedLoadToAccept(load);
+                if (!isOpen) {
+                    setSelectedLoadToAccept(null);
+                    setSelectedCarrierId('');
+                    setSelectedTruckId('');
+                    setSelectedDriverId('');
+                } else {
+                    setSelectedLoadToAccept(load);
+                }
               }}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground flex-grow" onClick={() => setSelectedLoadToAccept(load)}>
@@ -136,15 +150,26 @@ Load ID: ${load.id}
                     <div>
                       <Label htmlFor="carrierSelect">Your Carrier Company</Label>
                       <Select value={selectedCarrierId} onValueChange={setSelectedCarrierId}>
-                        <SelectTrigger id="carrierSelect" className="mt-1 bg-background border-border">
+                        <SelectTrigger id="carrierSelect" className={cn("mt-1 bg-background border-border", !isSelectedCarrierBookable && selectedCarrierId ? "border-red-500 ring-2 ring-red-500/50" : "")}>
                           <SelectValue placeholder="Select your carrier company" />
                         </SelectTrigger>
                         <SelectContent>
-                          {carriers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                          {carriers.map(c => (
+                            <SelectItem key={c.id} value={c.id} disabled={!c.isBookable}>
+                              <div className="flex items-center justify-between w-full">
+                                <span>{c.name}</span>
+                                {!c.isBookable && <XCircle className="h-4 w-4 text-destructive ml-2" />}
+                              </div>
+                               {!c.isBookable && <span className="text-xs text-destructive block">Payments Overdue</span>}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
+                      {!isSelectedCarrierBookable && selectedCarrierId && (
+                        <p className="text-xs text-destructive mt-1">This carrier is not bookable due to overdue payments.</p>
+                      )}
                     </div>
-                    {selectedCarrierId && (
+                    {selectedCarrierId && isSelectedCarrierBookable && (
                     <>
                         <div>
                             <Label htmlFor="truckSelect">Assign Truck</Label>
@@ -177,7 +202,7 @@ Load ID: ${load.id}
                     <Button 
                         type="button" 
                         onClick={handleAcceptLoad} 
-                        disabled={!selectedCarrierId || !selectedTruckId || !selectedLoadToAccept}
+                        disabled={!selectedCarrierId || !selectedTruckId || !selectedLoadToAccept || !isSelectedCarrierBookable}
                         className="bg-primary hover:bg-primary/90"
                     >
                       <UserCheck className="mr-2 h-4 w-4" /> Confirm & Assign
@@ -192,3 +217,4 @@ Load ID: ${load.id}
     </div>
   );
 }
+

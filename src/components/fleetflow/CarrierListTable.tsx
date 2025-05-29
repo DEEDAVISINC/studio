@@ -4,7 +4,7 @@ import type { Carrier, FmcsaAuthorityStatus } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Trash2, Edit3, Eye, Phone, Mail, ShieldCheck, ShieldAlert, ShieldQuestion, Loader2, CheckCircle } from "lucide-react";
+import { MoreHorizontal, Trash2, Edit3, Eye, Phone, Mail, ShieldCheck, ShieldAlert, ShieldQuestion, Loader2, CheckCircle, AlertCircleIcon } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useAppData } from "@/contexts/AppDataContext";
@@ -62,6 +62,14 @@ export function CarrierListTable({ carriers, onEdit, onDelete }: CarrierListTabl
     }
   };
 
+  const getBookableStatusBadge = (isBookable: boolean) => {
+    if (isBookable) {
+      return <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white"><CheckCircle className="mr-1 h-3 w-3" />Bookable</Badge>;
+    } else {
+      return <Badge variant="destructive"><AlertCircleIcon className="mr-1 h-3 w-3" />Payments Overdue</Badge>;
+    }
+  };
+
 
   if (carriers.length === 0) {
     return <p className="text-muted-foreground text-center py-8">No carriers found. Add a new carrier to get started.</p>;
@@ -76,12 +84,13 @@ export function CarrierListTable({ carriers, onEdit, onDelete }: CarrierListTabl
           <TableHead>MC# / DOT#</TableHead>
           <TableHead>Contact</TableHead>
           <TableHead>FMCSA Status</TableHead>
+          <TableHead>Bookable Status</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {carriers.map((carrier) => (
-          <TableRow key={carrier.id}>
+          <TableRow key={carrier.id} className={!carrier.isBookable ? 'bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/40' : ''}>
             <TableCell className="font-medium">
               <div>{carrier.name}</div>
               {carrier.dba && <div className="text-xs text-muted-foreground">DBA: {carrier.dba}</div>}
@@ -106,6 +115,9 @@ export function CarrierListTable({ carriers, onEdit, onDelete }: CarrierListTabl
                         Last: {format(new Date(carrier.fmcsaLastChecked), 'P p')}
                     </div>
                 )}
+            </TableCell>
+            <TableCell>
+                {getBookableStatusBadge(carrier.isBookable)}
             </TableCell>
             <TableCell className="text-right">
               <AlertDialog>
@@ -155,3 +167,4 @@ export function CarrierListTable({ carriers, onEdit, onDelete }: CarrierListTabl
     </div>
   );
 }
+

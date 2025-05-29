@@ -71,6 +71,7 @@ export interface Carrier {
   mcs150FormDate?: Date | string;
   operationClassification?: string; // e.g., "Auth. For Hire", "Private Property"
   carrierOperationType?: string; // e.g., "Interstate", "Intrastate Hazmat"
+  isBookable: boolean; // Added for bookable status based on payments
 }
 
 
@@ -134,7 +135,7 @@ export interface Invoice {
   invoiceNumber: string; // User-friendly invoice number e.g., INV-2024-001
   carrierId: string;
   invoiceDate: Date;
-  dueDate: Date;
+  dueDate: Date; // Wednesday of the week the invoice is generated
   dispatchFeeRecordIds: string[]; // IDs of DispatchFeeRecords included
   totalAmount: number;
   status: 'Draft' | 'Sent' | 'Paid' | 'Void';
@@ -211,3 +212,4 @@ export interface AvailableEquipmentPost {
   notes?: string;
   status: 'Available' | 'Booked' | 'Expired'; // Simple status for now
 }
+

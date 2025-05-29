@@ -34,56 +34,26 @@ export function CarrierInvoicing({
   const [selectedCarrierId, setSelectedCarrierId] = useState<string | undefined>(undefined);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
-  const [hasCriticallyOverduePayments, setHasCriticallyOverduePayments] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     setHasMounted(true);
   }, []);
+  
+  const selectedCarrierObject = useMemo(() => {
+    return selectedCarrierId ? getCarrierById(selectedCarrierId) : undefined;
+  }, [selectedCarrierId, getCarrierById]);
+
 
   const { previousWeekStart, previousWeekEnd } = useMemo(() => {
     if (!hasMounted) return { previousWeekStart: null, previousWeekEnd: null };
     const today = new Date();
-    const startOfCurrentWeekSunday = startOfWeek(today, { weekStartsOn: 0 }); // Current week's Sunday
-    const pWeekStart = subWeeks(startOfCurrentWeekSunday, 1); // Previous week's Sunday
-    const pWeekEnd = endOfWeek(pWeekStart, { weekStartsOn: 0 }); // Previous week's Saturday
+    const startOfCurrentWeekSunday = startOfWeek(today, { weekStartsOn: 0 }); 
+    const pWeekStart = subWeeks(startOfCurrentWeekSunday, 1); 
+    const pWeekEnd = endOfWeek(pWeekStart, { weekStartsOn: 0 }); 
     return { previousWeekStart: pWeekStart, previousWeekEnd: pWeekEnd };
   }, [hasMounted]);
-
-
-  useEffect(() => {
-    if (!hasMounted || !selectedCarrierId) {
-      setHasCriticallyOverduePayments(false);
-      return;
-    }
-
-    const carrierSentInvoices = invoices.filter(
-      (inv) => inv.carrierId === selectedCarrierId && inv.status === 'Sent'
-    );
-
-    let isOverdue = false;
-    const today = new Date();
-
-    for (const inv of carrierSentInvoices) {
-      const dueDate = new Date(inv.dueDate);
-      const mondayOfDueDateWeek = startOfWeek(dueDate, { weekStartsOn: 1 });
-      const wednesdayOfDueDateWeek = addDays(mondayOfDueDateWeek, 2); 
-      const endOfPaymentWednesday = new Date(
-        wednesdayOfDueDateWeek.getFullYear(),
-        wednesdayOfDueDateWeek.getMonth(),
-        wednesdayOfDueDateWeek.getDate(),
-        23, 59, 59, 999
-      );
-
-      if (today > endOfPaymentWednesday) {
-        isOverdue = true;
-        break;
-      }
-    }
-    setHasCriticallyOverduePayments(isOverdue);
-
-  }, [selectedCarrierId, invoices, hasMounted]);
 
 
   const pendingFeesForSelectedCarrier = useMemo(() => {
@@ -118,7 +88,7 @@ export function CarrierInvoicing({
       setIsInvoiceDialogOpen(true);
       toast({
         title: "Invoice Generated",
-        description: `Invoice ${newInvoice.invoiceNumber} created for ${getCarrierById(selectedCarrierId)?.name}.`,
+        description: `Invoice ${newInvoice.invoiceNumber} created for ${getCarrierById(selectedCarrierId)?.name}. Status: ${newInvoice.status}`,
       });
     } else {
       toast({
@@ -146,7 +116,7 @@ export function CarrierInvoicing({
             <SelectContent>
               {carriers.map(carrier => (
                 <SelectItem key={carrier.id} value={carrier.id}>
-                  {carrier.name}
+                  {carrier.name} {!carrier.isBookable && "(Payments Overdue)"}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -159,13 +129,13 @@ export function CarrierInvoicing({
         )}
       </div>
 
-      {hasMounted && hasCriticallyOverduePayments && selectedCarrierId && (
+      {hasMounted && selectedCarrierObject && !selectedCarrierObject.isBookable && (
         <Alert variant="destructive" className="mt-4">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Overdue Payments Detected</AlertTitle>
+          <AlertTitle>Payments Overdue for {selectedCarrierObject.name}</AlertTitle>
           <AlertDescription>
-            This carrier has 'Sent' invoices where payment was due by Wednesday of a previous week. 
-            Their eligibility for new bookable loads may be impacted until payments are settled.
+            This carrier has unpaid invoices past their due date. 
+            Their eligibility for new bookable loads is suspended until payments are settled.
           </AlertDescription>
         </Alert>
       )}

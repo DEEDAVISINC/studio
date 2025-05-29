@@ -1,6 +1,6 @@
 
 "use client";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react'; // Added useState
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
 import * as z from "zod";
@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, XCircle } from "lucide-react"; // Added XCircle
 import type { AvailableEquipmentPost, Carrier } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
@@ -55,6 +55,8 @@ interface PostAvailableEquipmentDialogProps {
 
 export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, postToEdit, carriers }: PostAvailableEquipmentDialogProps) {
   const { toast } = useToast();
+  const [selectedCarrierIsBookable, setSelectedCarrierIsBookable] = useState(true);
+
   const form = useForm<EquipmentPostFormData>({
     resolver: zodResolver(equipmentPostSchema),
     defaultValues: {
@@ -72,6 +74,17 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
       status: 'Available',
     }
   });
+  
+  const watchedCarrierId = form.watch("carrierId");
+
+  useEffect(() => {
+    if (watchedCarrierId) {
+      const carrier = carriers.find(c => c.id === watchedCarrierId);
+      setSelectedCarrierIsBookable(carrier?.isBookable ?? false);
+    } else {
+      setSelectedCarrierIsBookable(true); // Default to true if no carrier selected
+    }
+  }, [watchedCarrierId, carriers]);
 
   useEffect(() => {
     if (isOpen && postToEdit) {
@@ -80,6 +93,8 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
         availableFromDate: typeof postToEdit.availableFromDate === 'string' ? parseISO(postToEdit.availableFromDate) : postToEdit.availableFromDate,
         availableToDate: postToEdit.availableToDate ? (typeof postToEdit.availableToDate === 'string' ? parseISO(postToEdit.availableToDate) : postToEdit.availableToDate) : null,
       });
+      const carrier = carriers.find(c => c.id === postToEdit.carrierId);
+      setSelectedCarrierIsBookable(carrier?.isBookable ?? false);
     } else if (isOpen && !postToEdit) {
       form.reset({
         carrierId: '', equipmentType: '', currentLocation: '',
@@ -87,21 +102,26 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
         preferredDestinations: '', rateExpectation: '',
         contactName: '', contactPhone: '', contactEmail: '', notes: '', status: 'Available'
       });
+      setSelectedCarrierIsBookable(true); // Reset for new post
     }
-  }, [isOpen, postToEdit, form]);
+  }, [isOpen, postToEdit, form, carriers]);
 
   const onSubmit = (data: EquipmentPostFormData) => {
+    if (!selectedCarrierIsBookable) {
+        toast({ title: "Carrier Unbookable", description: "This carrier cannot post equipment due to overdue payments.", variant: "destructive" });
+        return;
+    }
+
     const submissionData = {
         ...data,
-        availableFromDate: data.availableFromDate, // Already Date object
-        availableToDate: data.availableToDate ? data.availableToDate : undefined, // Ensure undefined if null
+        availableFromDate: data.availableFromDate, 
+        availableToDate: data.availableToDate ? data.availableToDate : undefined, 
     };
 
     if (postToEdit) {
       onSave({ ...postToEdit, ...submissionData });
       toast({ title: "Posting Updated", description: `Equipment posting for ${data.equipmentType} updated.` });
     } else {
-      // For new posts, status is set by the context
       const { status, ...newPostData } = submissionData;
       onSave(newPostData as Omit<AvailableEquipmentPost, 'id' | 'postedDate' | 'status'>);
       toast({ title: "Equipment Posted", description: `${data.equipmentType} available for hire has been posted.` });
@@ -155,17 +175,36 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
               name="carrierId"
               control={form.control}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value || ""}>
-                  <SelectTrigger id="carrierId" className="mt-1 bg-background border-border">
+                <Select 
+                    onValueChange={(value) => {
+                        field.onChange(value);
+                        const carrier = carriers.find(c => c.id === value);
+                        setSelectedCarrierIsBookable(carrier?.isBookable ?? false);
+                    }} 
+                    defaultValue={field.value} 
+                    value={field.value || ""}
+                >
+                  <SelectTrigger id="carrierId" className={cn("mt-1 bg-background border-border", !selectedCarrierIsBookable && field.value ? "border-red-500 ring-2 ring-red-500/50" : "")}>
                     <SelectValue placeholder="Select your carrier" />
                   </SelectTrigger>
                   <SelectContent>
-                    {carriers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    {carriers.map(c => (
+                        <SelectItem key={c.id} value={c.id} disabled={!c.isBookable && !postToEdit}>
+                            <div className="flex items-center justify-between w-full">
+                                <span>{c.name}</span>
+                                {!c.isBookable && <XCircle className="h-4 w-4 text-destructive ml-2" />}
+                            </div>
+                            {!c.isBookable && <span className="text-xs text-destructive block">Payments Overdue</span>}
+                        </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               )}
             />
             {form.formState.errors.carrierId && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.carrierId.message}</p>}
+             {!selectedCarrierIsBookable && watchedCarrierId && (
+                <p className="text-xs text-destructive mt-1">This carrier cannot post new equipment due to overdue payments.</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -246,7 +285,7 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
 
           <DialogFooter className="pt-4 sticky bottom-0 bg-card pb-1">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90">
+            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={!selectedCarrierIsBookable && !postToEdit}>
               {postToEdit ? "Save Changes" : "Post Equipment"}
             </Button>
           </DialogFooter>
@@ -255,3 +294,4 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
     </Dialog>
   );
 }
+

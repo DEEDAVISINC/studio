@@ -1,9 +1,9 @@
 
 "use client";
 import type { ReactNode } from 'react';
-import { createContext, useContext, useState, useCallback, useMemo } from 'react'; // Added useMemo
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'; // Added useEffect
 import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus } from '@/lib/types';
-import { addDays, parseISO, addYears } from 'date-fns';
+import { addDays, parseISO, addYears, startOfWeek, isPast, endOfDay } from 'date-fns'; // Added startOfWeek, isPast, endOfDay
 import { useToast } from "@/hooks/use-toast";
 
 interface AppDataContextType {
@@ -64,6 +64,7 @@ interface AppDataContextType {
   getShipperById: (shipperId: string) => Shipper | undefined;
   getBrokerLoadById: (loadId: string) => BrokerLoad | undefined;
   getAvailableEquipmentPostById: (postId: string) => AvailableEquipmentPost | undefined;
+  checkAndSetCarrierBookableStatus: (carrierId: string) => void; // Added
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -114,6 +115,7 @@ const initialCarriers: Carrier[] = [
     mcs150FormDate: parseISO('2024-01-15T00:00:00.000Z'),
     operationClassification: 'Auth. For Hire',
     carrierOperationType: 'Interstate',
+    isBookable: true,
   },
   { 
     id: 'carrier2', 
@@ -143,6 +145,7 @@ const initialCarriers: Carrier[] = [
     mcs150FormDate: parseISO('2023-11-20T00:00:00.000Z'),
     operationClassification: 'Auth. For Hire',
     carrierOperationType: 'Interstate, Intrastate Non-Hazmat',
+    isBookable: true,
   },
 ];
 
@@ -229,6 +232,47 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const getBrokerLoadById = useCallback((loadId: string) => brokerLoads.find(bl => bl.id === loadId), [brokerLoads]);
   const getAvailableEquipmentPostById = useCallback((postId: string) => availableEquipmentPosts.find(p => p.id === postId), [availableEquipmentPosts]);
 
+
+  const checkAndSetCarrierBookableStatus = useCallback((carrierId: string) => {
+    setCarriers(prevCarriers => {
+        const carrier = prevCarriers.find(c => c.id === carrierId);
+        if (!carrier) return prevCarriers;
+
+        let hasUnpaidOverdueInvoices = false;
+        const carrierSentInvoices = invoices.filter(
+            inv => inv.carrierId === carrierId && inv.status === 'Sent'
+        );
+
+        if (carrierSentInvoices.length > 0) {
+            const today = new Date();
+            for (const inv of carrierSentInvoices) {
+                const invoiceDueDateIsWednesday = new Date(inv.dueDate); // This is the Wednesday it's due
+                const endOfDueWednesday = endOfDay(invoiceDueDateIsWednesday); // Wednesday 11:59:59 PM
+
+                if (isPast(endOfDueWednesday)) { // If today is past that Wednesday
+                    hasUnpaidOverdueInvoices = true;
+                    break; 
+                }
+            }
+        }
+        const newIsBookable = !hasUnpaidOverdueInvoices;
+        if (carrier.isBookable !== newIsBookable) {
+            return prevCarriers.map(c => c.id === carrierId ? { ...c, isBookable: newIsBookable } : c);
+        }
+        return prevCarriers; // No change needed
+    });
+  }, [invoices]); // Removed setCarriers from deps, relies on functional update
+
+   useEffect(() => {
+    // Check all carrier statuses on initial load or when invoices change significantly
+    // (e.g. new invoice added, existing one paid/voided)
+    carriers.forEach(carrier => {
+        checkAndSetCarrierBookableStatus(carrier.id);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoices, carriers.length]); // Rerun if invoice list or number of carriers changes
+
+
   // Truck CRUD
   const addTruck = useCallback((truck: Omit<Truck, 'id'>) => {
     const newTruckData = {
@@ -278,6 +322,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       mcs150FormDate: carrierData.mcs150FormDate ? new Date(carrierData.mcs150FormDate) : undefined,
       fmcsaAuthorityStatus: 'Not Verified', 
       fmcsaLastChecked: undefined,
+      isBookable: true, // New carriers are bookable by default
     };
     setCarriers(prev => [...prev, newCarrier]);
     
@@ -296,6 +341,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       insurancePolicyExpirationDate: updatedCarrierData.insurancePolicyExpirationDate ? new Date(updatedCarrierData.insurancePolicyExpirationDate) : undefined,
       mcs150FormDate: updatedCarrierData.mcs150FormDate ? new Date(updatedCarrierData.mcs150FormDate) : undefined,
       fmcsaLastChecked: updatedCarrierData.fmcsaLastChecked ? new Date(updatedCarrierData.fmcsaLastChecked) : undefined,
+      isBookable: updatedCarrierData.isBookable, // Ensure this is carried over
     };
     setCarriers(prev => prev.map(c => (c.id === updatedCarrier.id ? updatedCarrier : c)));
 
@@ -312,12 +358,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         )
       );
     }
-  }, [carriers]); // Depends on `carriers` state to find the original carrier
+  }, [carriers]); 
 
   const removeCarrier = useCallback((carrierId: string) => {
     setCarriers(prev => prev.filter(c => c.id !== carrierId));
     setTrucks(prev => prev.map(t => t.carrierId === carrierId ? {...t, carrierId: '', mc150DueDate: undefined } : t)); 
     setAvailableEquipmentPosts(prev => prev.filter(p => p.carrierId !== carrierId));
+    setInvoices(prev => prev.filter(inv => inv.carrierId !== carrierId));
+    setDispatchFeeRecords(prev => prev.filter(fee => fee.carrierId !== carrierId));
   }, []);
 
   const verifyCarrierFmcsa = useCallback(async (carrierId: string): Promise<FmcsaAuthorityStatus> => {
@@ -429,32 +477,47 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     const totalAmount = recordsToInvoice.reduce((sum, rec) => sum + rec.feeAmount, 0);
     const newInvoiceId = `inv${Date.now()}`;
-    const currentDate = new Date();
+    const currentDate = new Date(); // Invoice creation date (e.g. Monday)
     
     const year = currentDate.getFullYear();
     const invCountForYear = invoices.filter(inv => new Date(inv.invoiceDate).getFullYear() === year).length + 1;
     const invoiceNumber = `INV-${year}-${String(invCountForYear).padStart(3, '0')}`;
+
+    // Due date is Wednesday of the week the invoice is generated
+    const mondayOfThisWeek = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday
+    const dueDateIsWednesday = addDays(mondayOfThisWeek, 2); // Wednesday
 
     const newInvoice: Invoice = {
       id: newInvoiceId,
       invoiceNumber,
       carrierId,
       invoiceDate: currentDate,
-      dueDate: addDays(currentDate, 30), 
+      dueDate: dueDateIsWednesday, 
       dispatchFeeRecordIds: recordsToInvoice.map(rec => rec.id),
       totalAmount,
-      status: 'Draft',
+      status: 'Sent', // Default to 'Sent' immediately
     };
 
     setInvoices(prev => [...prev, newInvoice]);
     recordsToInvoice.forEach(rec => updateDispatchFeeRecordStatus(rec.id, 'Invoiced', newInvoiceId));
+    checkAndSetCarrierBookableStatus(carrierId); // Check status after new 'Sent' invoice
     
     return newInvoice;
-  }, [dispatchFeeRecords, invoices, updateDispatchFeeRecordStatus]);
+  }, [dispatchFeeRecords, invoices, updateDispatchFeeRecordStatus, checkAndSetCarrierBookableStatus]);
 
   const updateInvoiceStatus = useCallback((invoiceId: string, newStatus: Invoice['status']) => {
-    setInvoices(prev => prev.map(inv => inv.id === invoiceId ? { ...inv, status: newStatus } : inv));
-  }, []);
+    let carrierIdToUpdate: string | undefined = undefined;
+    setInvoices(prev => prev.map(inv => {
+        if (inv.id === invoiceId) {
+            carrierIdToUpdate = inv.carrierId;
+            return { ...inv, status: newStatus };
+        }
+        return inv;
+    }));
+    if (carrierIdToUpdate && (newStatus === 'Paid' || newStatus === 'Void')) {
+        checkAndSetCarrierBookableStatus(carrierIdToUpdate);
+    }
+  }, [checkAndSetCarrierBookableStatus]);
 
   // Shipper CRUD
   const addShipper = useCallback((shipper: Omit<Shipper, 'id'>) => {
@@ -513,7 +576,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const currentShipper = load ? shippers.find(s => s.id === load.shipperId) : undefined;
 
     if (load && truck && load.status === 'Available') {
-      const updatedLoad: BrokerLoad = {
+      const carrier = carriers.find(c => c.id === carrierId);
+      if (!carrier || !carrier.isBookable) {
+        toast({ title: "Assignment Failed", description: `${carrier?.name || 'Carrier'} is currently not bookable due to overdue payments.`, variant: "destructive"});
+        return undefined;
+      }
+
+      const updatedLoadData: BrokerLoad = {
         ...load,
         assignedCarrierId: carrierId,
         assignedTruckId: truckId,
@@ -521,11 +590,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         status: 'Booked',
         confirmationNumber: load.confirmationNumber || `CONF-${Date.now().toString().slice(-6)}`
       };
-      // This updateBrokerLoad call seems to be missing its dependency: updateBrokerLoad itself or setBrokerLoads
-      // For now, we'll assume it's stable or handled by useMemo later.
-      // To be safe, it should be in the dependency array if it's a useCallback from this scope.
-      // Or if updateBrokerLoad comes from props, it should be listed.
-      // Since it's defined in this scope, it will be listed in useMemo's deps.
       
       const scheduleResult = addScheduleEntry({
         truckId: truckId,
@@ -536,7 +600,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         origin: load.originAddress,
         destination: load.destinationAddress,
         loadValue: load.offeredRate,
-        notes: `Broker Load ID: ${load.id}. Shipper: ${currentShipper?.name || 'N/A'}. Confirmation: ${updatedLoad.confirmationNumber}`,
+        notes: `Broker Load ID: ${load.id}. Shipper: ${currentShipper?.name || 'N/A'}. Confirmation: ${updatedLoadData.confirmationNumber}`,
         scheduleType: 'Delivery', 
         color: 'hsl(260, 80%, 60%)', 
         brokerLoadId: load.id,
@@ -544,15 +608,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       });
 
       if (!scheduleResult) {
-          updateBrokerLoad({ ...load, status: 'Available' }); 
+          // Schedule conflict, do not update broker load status to Booked
           return undefined; 
       }
       // Successfully created schedule, now update the broker load definitively
-      setBrokerLoads(prev => prev.map(bl => bl.id === updatedLoad.id ? updatedLoad : bl));
-      return updatedLoad;
+      setBrokerLoads(prev => prev.map(bl => bl.id === updatedLoadData.id ? updatedLoadData : bl));
+      return updatedLoadData;
     }
     return undefined;
-  }, [brokerLoads, trucks, shippers, addScheduleEntry, toast, updateBrokerLoad]);
+  }, [brokerLoads, trucks, shippers, carriers, addScheduleEntry, toast]);
 
 
    const addLoadDocument = useCallback((doc: Omit<LoadDocument, 'id' | 'uploadDate'>) => {
@@ -610,6 +674,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule,
     addLoadDocument,
     addAvailableEquipmentPost, updateAvailableEquipmentPost, removeAvailableEquipmentPost,
+    checkAndSetCarrierBookableStatus,
   }), [
     trucks, drivers, carriers, scheduleEntries, dispatchFeeRecords, invoices,
     shippers, brokerLoads, loadDocuments, availableEquipmentPosts,
@@ -625,6 +690,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule,
     addLoadDocument,
     addAvailableEquipmentPost, updateAvailableEquipmentPost, removeAvailableEquipmentPost,
+    checkAndSetCarrierBookableStatus, // Added
   ]);
 
   return (
@@ -641,5 +707,4 @@ export function useAppData() {
   }
   return context;
 }
-
 
