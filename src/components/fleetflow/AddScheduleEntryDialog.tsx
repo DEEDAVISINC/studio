@@ -54,6 +54,8 @@ interface AddScheduleEntryDialogProps {
   drivers: Driver[];
 }
 
+const UNASSIGNED_DRIVER_VALUE = "__UNASSIGNED_DRIVER_SCHEDULE__";
+
 const colorOptions = [
   { label: "Primary", value: "hsl(var(--primary))" },
   { label: "Accent", value: "hsl(var(--accent))" },
@@ -83,10 +85,13 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
     },
   });
 
+  const watchedDriverId = form.watch("driverId");
+
   useEffect(() => {
     if (entryToEdit) {
       form.reset({
         ...entryToEdit,
+        driverId: entryToEdit.driverId || undefined,
         loadValue: entryToEdit.loadValue ?? undefined, 
         scheduleType: entryToEdit.scheduleType || 'Delivery',
       });
@@ -108,7 +113,11 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
   }, [entryToEdit, form, isOpen]);
 
   const onSubmit = (data: ScheduleEntryFormData) => {
-    onAddScheduleEntry(data);
+    const submissionData = {
+      ...data,
+      driverId: data.driverId === UNASSIGNED_DRIVER_VALUE ? undefined : data.driverId,
+    };
+    onAddScheduleEntry(submissionData);
     toast({
       title: entryToEdit ? "Schedule Entry Updated" : "Schedule Entry Added",
       description: `Entry "${data.title}" has been successfully ${entryToEdit ? 'updated' : 'added'}.`,
@@ -136,7 +145,7 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
           <div className="grid grid-cols-2 gap-3">
              <div>
                 <Label htmlFor="scheduleType" className="text-foreground">Schedule Type</Label>
-                <Select onValueChange={(value: ScheduleType) => form.setValue("scheduleType", value)} defaultValue={form.getValues("scheduleType")}>
+                <Select onValueChange={(value: ScheduleType) => form.setValue("scheduleType", value)} value={form.watch("scheduleType") || 'Delivery'}>
                 <SelectTrigger id="scheduleType" className="mt-1 bg-background border-border focus:ring-primary">
                     <div className="flex items-center gap-2">
                         <Package className="h-4 w-4 text-muted-foreground" />
@@ -151,7 +160,7 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
             </div>
             <div>
               <Label htmlFor="truckId" className="text-foreground">Truck</Label>
-              <Select onValueChange={(value) => form.setValue("truckId", value)} defaultValue={form.getValues("truckId")}>
+              <Select onValueChange={(value) => form.setValue("truckId", value)} value={form.watch("truckId") || ""}>
                 <SelectTrigger id="truckId" className="mt-1 bg-background border-border focus:ring-primary">
                   <SelectValue placeholder="Select truck" />
                 </SelectTrigger>
@@ -166,19 +175,24 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="driverId" className="text-foreground">Driver (Optional)</Label>
-              <Select onValueChange={(value) => form.setValue("driverId", value)} defaultValue={form.getValues("driverId")}>
+              <Select
+                onValueChange={(value) => {
+                  form.setValue("driverId", value === UNASSIGNED_DRIVER_VALUE ? undefined : value);
+                }}
+                value={watchedDriverId === undefined ? UNASSIGNED_DRIVER_VALUE : watchedDriverId}
+              >
                 <SelectTrigger id="driverId" className="mt-1 bg-background border-border focus:ring-primary">
                   <SelectValue placeholder="Assign driver" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value={UNASSIGNED_DRIVER_VALUE}>Unassigned</SelectItem>
                   {drivers.map(driver => <SelectItem key={driver.id} value={driver.id}>{driver.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
                 <Label htmlFor="color" className="text-foreground">Event Color</Label>
-                <Select onValueChange={(value) => form.setValue("color", value)} defaultValue={form.getValues("color")}>
+                <Select onValueChange={(value) => form.setValue("color", value)} value={form.watch("color") || colorOptions[0].value}>
                 <SelectTrigger id="color" className="mt-1 bg-background border-border focus:ring-primary">
                     <SelectValue placeholder="Select color" />
                 </SelectTrigger>
@@ -293,3 +307,4 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
     </Dialog>
   );
 }
+

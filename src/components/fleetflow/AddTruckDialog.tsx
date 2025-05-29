@@ -48,6 +48,8 @@ interface AddTruckDialogProps {
   carriers: Carrier[];
 }
 
+const UNASSIGNED_DRIVER_VALUE = "__UNASSIGNED_DRIVER__";
+
 export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, drivers, carriers }: AddTruckDialogProps) {
   const { toast } = useToast();
   const form = useForm<TruckFormData>({
@@ -66,10 +68,13 @@ export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, 
     },
   });
 
+  const watchedDriverId = form.watch("driverId");
+
   useEffect(() => {
     if (truckToEdit) {
       form.reset({
         ...truckToEdit,
+        driverId: truckToEdit.driverId || undefined, // Ensure undefined if null/empty
         mc150DueDate: truckToEdit.mc150DueDate ? (typeof truckToEdit.mc150DueDate === 'string' ? parseISO(truckToEdit.mc150DueDate) : truckToEdit.mc150DueDate) : null,
         permitExpiryDate: truckToEdit.permitExpiryDate ? (typeof truckToEdit.permitExpiryDate === 'string' ? parseISO(truckToEdit.permitExpiryDate) : truckToEdit.permitExpiryDate) : null,
         taxDueDate: truckToEdit.taxDueDate ? (typeof truckToEdit.taxDueDate === 'string' ? parseISO(truckToEdit.taxDueDate) : truckToEdit.taxDueDate) : null,
@@ -94,6 +99,7 @@ export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, 
     // Convert dates to string if needed, or ensure AppDataContext handles Date objects
     const truckData = {
         ...data,
+        driverId: data.driverId === UNASSIGNED_DRIVER_VALUE ? undefined : data.driverId, // Ensure unassigned maps to undefined
         mc150DueDate: data.mc150DueDate ? data.mc150DueDate.toISOString() : undefined,
         permitExpiryDate: data.permitExpiryDate ? data.permitExpiryDate.toISOString() : undefined,
         taxDueDate: data.taxDueDate ? data.taxDueDate.toISOString() : undefined,
@@ -185,7 +191,7 @@ export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, 
           <div className="grid grid-cols-2 gap-3">
              <div>
                 <Label htmlFor="carrierId" className="text-foreground">Carrier</Label>
-                <Select onValueChange={(value) => form.setValue("carrierId", value)} defaultValue={form.getValues("carrierId")}>
+                <Select onValueChange={(value) => form.setValue("carrierId", value)} value={form.watch("carrierId") || ""}>
                 <SelectTrigger id="carrierId" className="mt-1 bg-background border-border focus:ring-primary">
                     <SelectValue placeholder="Select a carrier" />
                 </SelectTrigger>
@@ -199,12 +205,17 @@ export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, 
             </div>
             <div>
                 <Label htmlFor="driverId" className="text-foreground">Driver (Optional)</Label>
-                <Select onValueChange={(value) => form.setValue("driverId", value)} defaultValue={form.getValues("driverId")}>
+                <Select
+                  onValueChange={(value) => {
+                    form.setValue("driverId", value === UNASSIGNED_DRIVER_VALUE ? undefined : value);
+                  }}
+                  value={watchedDriverId === undefined ? UNASSIGNED_DRIVER_VALUE : watchedDriverId}
+                >
                 <SelectTrigger id="driverId" className="mt-1 bg-background border-border focus:ring-primary">
                     <SelectValue placeholder="Assign a driver" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
+                    <SelectItem value={UNASSIGNED_DRIVER_VALUE}>Unassigned</SelectItem>
                     {drivers.map(driver => (
                     <SelectItem key={driver.id} value={driver.id}>{driver.name}</SelectItem>
                     ))}
@@ -232,3 +243,4 @@ export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, 
     </Dialog>
   );
 }
+
