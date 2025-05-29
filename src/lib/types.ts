@@ -91,6 +91,7 @@ export interface ScheduleEntry {
   color?: string; // For calendar event styling
   scheduleType?: ScheduleType; 
   brokerLoadId?: string; // Link to BrokerLoad if created from Broker Box
+  isPartialLoad?: boolean; // Added for overlap logic
 }
 
 // For AI Route Optimization Form

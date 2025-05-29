@@ -25,6 +25,7 @@ import { SCHEDULE_TYPES } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarIcon, DollarSign, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox'; // Added Checkbox import
 
 const scheduleEntrySchema = z.object({
   title: z.string().min(2, { message: "Title must be at least 2 characters." }),
@@ -38,6 +39,7 @@ const scheduleEntrySchema = z.object({
   notes: z.string().optional(),
   color: z.string().optional(),
   scheduleType: z.enum(SCHEDULE_TYPES).default('Delivery'),
+  isPartialLoad: z.boolean().optional().default(false), // Added isPartialLoad
 }).refine(data => data.end >= data.start, {
   message: "End date cannot be before start date.",
   path: ["end"],
@@ -48,7 +50,7 @@ type ScheduleEntryFormData = z.infer<typeof scheduleEntrySchema>;
 interface AddScheduleEntryDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onAddScheduleEntry: (entry: Omit<ScheduleEntry, 'id'>) => void;
+  onAddScheduleEntry: (entry: Omit<ScheduleEntry, 'id'> | ScheduleEntry) => ScheduleEntry | null; // Updated return type
   entryToEdit?: ScheduleEntry | null;
   trucks: Truck[];
   drivers: Driver[];
@@ -82,6 +84,7 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
       notes: '',
       color: colorOptions[0].value,
       scheduleType: 'Delivery',
+      isPartialLoad: false, // Added default
     },
   });
 
@@ -91,9 +94,12 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
     if (entryToEdit) {
       form.reset({
         ...entryToEdit,
+        start: new Date(entryToEdit.start),
+        end: new Date(entryToEdit.end),
         driverId: entryToEdit.driverId || undefined,
         loadValue: entryToEdit.loadValue ?? undefined, 
         scheduleType: entryToEdit.scheduleType || 'Delivery',
+        isPartialLoad: entryToEdit.isPartialLoad || false, // Reset isPartialLoad
       });
     } else {
       form.reset({
@@ -108,6 +114,7 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
         notes: '',
         color: colorOptions[0].value,
         scheduleType: 'Delivery',
+        isPartialLoad: false, // Reset isPartialLoad
       });
     }
   }, [entryToEdit, form, isOpen]);
@@ -117,13 +124,18 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
       ...data,
       driverId: data.driverId === UNASSIGNED_DRIVER_VALUE ? undefined : data.driverId,
     };
-    onAddScheduleEntry(submissionData);
-    toast({
-      title: entryToEdit ? "Schedule Entry Updated" : "Schedule Entry Added",
-      description: `Entry "${data.title}" has been successfully ${entryToEdit ? 'updated' : 'added'}.`,
-    });
-    form.reset();
-    onOpenChange(false);
+    
+    const result = onAddScheduleEntry(submissionData);
+
+    if (result) {
+      toast({
+        title: entryToEdit ? "Schedule Entry Updated" : "Schedule Entry Added",
+        description: `Entry "${data.title}" has been successfully ${entryToEdit ? 'updated' : 'added'}.`,
+      });
+      form.reset();
+      onOpenChange(false);
+    } 
+    // If result is null, the context has already shown a toast for the conflict
   };
 
   return (
@@ -290,11 +302,23 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
             {form.formState.errors.loadValue && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.loadValue.message}</p>}
           </div>
 
-
           <div>
             <Label htmlFor="notes" className="text-foreground">Notes (Optional)</Label>
             <Textarea id="notes" {...form.register("notes")} className="mt-1 bg-background border-border focus:ring-primary" rows={2}/>
           </div>
+          
+          <div className="flex items-center space-x-2 pt-1">
+            <Checkbox
+              id="isPartialLoad"
+              checked={form.watch("isPartialLoad")}
+              onCheckedChange={(checked) => form.setValue("isPartialLoad", !!checked)}
+            />
+            <Label htmlFor="isPartialLoad" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              This is a partial load (allows overlap with other partial loads)
+            </Label>
+          </div>
+          {form.formState.errors.isPartialLoad && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.isPartialLoad.message}</p>}
+
 
           <DialogFooter className="pt-4 sticky bottom-0 bg-card pb-1">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -307,4 +331,3 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
     </Dialog>
   );
 }
-

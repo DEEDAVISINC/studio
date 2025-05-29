@@ -16,11 +16,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SCHEDULE_TYPES } from "@/lib/types";
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 export default function SchedulesPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ScheduleEntry | null>(null);
   const { scheduleEntries, addScheduleEntry, updateScheduleEntry, removeScheduleEntry, trucks, drivers } = useAppData();
+  const { toast } = useToast(); // Initialize useToast
   const [typeFilters, setTypeFilters] = useState<Record<ScheduleType, boolean>>({
     Delivery: true,
     Maintenance: true,
@@ -28,13 +30,21 @@ export default function SchedulesPage() {
     Other: true,
   });
 
-  const handleAddOrUpdateEntry = (entryData: Omit<ScheduleEntry, 'id'> | ScheduleEntry) => {
+  const handleAddOrUpdateEntry = (entryData: Omit<ScheduleEntry, 'id'> | ScheduleEntry): ScheduleEntry | null => {
+    let result: ScheduleEntry | null = null;
     if (editingEntry && 'id' in entryData) {
-      updateScheduleEntry(entryData as ScheduleEntry);
+      result = updateScheduleEntry(entryData as ScheduleEntry);
     } else {
-      addScheduleEntry(entryData as Omit<ScheduleEntry, 'id'>);
+      result = addScheduleEntry(entryData as Omit<ScheduleEntry, 'id'>);
     }
-    setEditingEntry(null);
+    
+    // Toast for success is handled by the dialog now, based on the result
+    // Toast for failure (overlap) is handled by the context functions
+
+    if (result) { // Only reset and close if operation was successful
+        setEditingEntry(null);
+    }
+    return result; // Return the result so the dialog can decide to close
   };
 
   const openEditDialog = (entry: ScheduleEntry) => {
@@ -60,7 +70,7 @@ export default function SchedulesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Truck Scheduler</h1>
-          <p className="text-muted-foreground">View and manage truck schedules in the calendar.</p>
+          <p className="text-muted-foreground">View and manage truck schedules in the calendar. Overlaps are prevented unless marked as partial load.</p>
         </div>
         <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -104,7 +114,7 @@ export default function SchedulesPage() {
             setIsAddDialogOpen(isOpen);
             if (!isOpen) setEditingEntry(null);
         }}
-        onAddScheduleEntry={handleAddOrUpdateEntry}
+        onAddScheduleEntry={handleAddOrUpdateEntry} // This now expects ScheduleEntry | null
         entryToEdit={editingEntry}
         trucks={trucks}
         drivers={drivers}

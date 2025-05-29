@@ -1,10 +1,10 @@
 
 "use client";
 import type { ReactNode } from 'react';
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react'; // Added useMemo
 import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus } from '@/lib/types';
 import { addDays, parseISO, addYears } from 'date-fns';
-
+import { useToast } from "@/hooks/use-toast";
 
 interface AppDataContextType {
   trucks: Truck[];
@@ -31,8 +31,8 @@ interface AppDataContextType {
   removeCarrier: (carrierId: string) => void;
   verifyCarrierFmcsa: (carrierId: string) => Promise<FmcsaAuthorityStatus>;
   
-  addScheduleEntry: (entry: Omit<ScheduleEntry, 'id'>) => ScheduleEntry;
-  updateScheduleEntry: (entry: ScheduleEntry) => void;
+  addScheduleEntry: (entry: Omit<ScheduleEntry, 'id'>) => ScheduleEntry | null;
+  updateScheduleEntry: (entry: ScheduleEntry) => ScheduleEntry | null;
   removeScheduleEntry: (entryId: string) => void;
 
   addDispatchFeeRecord: (record: Omit<DispatchFeeRecord, 'id' | 'calculatedDate' | 'status' | 'feeAmount'>) => void;
@@ -68,28 +68,15 @@ interface AppDataContextType {
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
-// Helper function to calculate MC-150 Due Date
 const calculateMc150DueDate = (carrierMc150FormDate?: Date | string): Date | undefined => {
   if (!carrierMc150FormDate) return undefined;
   try {
-    return addYears(parseISO(carrierMc150FormDate as string), 2);
+    const parsedDate = typeof carrierMc150FormDate === 'string' ? parseISO(carrierMc150FormDate) : carrierMc150FormDate;
+    return addYears(parsedDate, 2);
   } catch (e) {
-    // console.error("Error calculating MC-150 due date:", e);
     return undefined;
   }
 };
-
-
-const initialTrucks: Truck[] = [
-  { id: 'truck1', name: 'Alpha Hauler', licensePlate: 'TRK-001', model: 'Volvo VNL', year: 2022, carrierId: 'carrier1', driverId: 'driver1', maintenanceStatus: 'Good', mc150DueDate: calculateMc150DueDate(parseISO('2024-01-15T00:00:00.000Z')), permitExpiryDate: parseISO('2024-12-31T00:00:00.000Z'), taxDueDate: parseISO('2024-09-30T00:00:00.000Z') },
-  { id: 'truck2', name: 'Beta Mover', licensePlate: 'TRK-002', model: 'Freightliner Cascadia', year: 2021, carrierId: 'carrier2', driverId: 'driver2', maintenanceStatus: 'Needs Service', mc150DueDate: calculateMc150DueDate(parseISO('2023-11-20T00:00:00.000Z')) },
-  { id: 'truck3', name: 'Gamma Transporter', licensePlate: 'TRK-003', model: 'Peterbilt 579', year: 2023, carrierId: 'carrier1', maintenanceStatus: 'In Service', permitExpiryDate: parseISO('2025-03-28T00:00:00.000Z'), mc150DueDate: calculateMc150DueDate(parseISO('2024-01-15T00:00:00.000Z')) },
-];
-
-const initialDrivers: Driver[] = [
-  { id: 'driver1', name: 'John Doe', contactPhone: '555-1234', contactEmail: 'john.doe@example.com', licenseNumber: 'DL12345' },
-  { id: 'driver2', name: 'Jane Smith', contactPhone: '555-5678', contactEmail: 'jane.smith@example.com', licenseNumber: 'DL67890' },
-];
 
 const initialCarriers: Carrier[] = [
   { 
@@ -159,13 +146,23 @@ const initialCarriers: Carrier[] = [
   },
 ];
 
+const initialTrucks: Truck[] = [
+  { id: 'truck1', name: 'Alpha Hauler', licensePlate: 'TRK-001', model: 'Volvo VNL', year: 2022, carrierId: 'carrier1', driverId: 'driver1', maintenanceStatus: 'Good', mc150DueDate: calculateMc150DueDate(initialCarriers[0]?.mcs150FormDate), permitExpiryDate: parseISO('2024-12-31T00:00:00.000Z'), taxDueDate: parseISO('2024-09-30T00:00:00.000Z') },
+  { id: 'truck2', name: 'Beta Mover', licensePlate: 'TRK-002', model: 'Freightliner Cascadia', year: 2021, carrierId: 'carrier2', driverId: 'driver2', maintenanceStatus: 'Needs Service', mc150DueDate: calculateMc150DueDate(initialCarriers[1]?.mcs150FormDate) },
+  { id: 'truck3', name: 'Gamma Transporter', licensePlate: 'TRK-003', model: 'Peterbilt 579', year: 2023, carrierId: 'carrier1', maintenanceStatus: 'In Service', permitExpiryDate: parseISO('2025-03-28T00:00:00.000Z'), mc150DueDate: calculateMc150DueDate(initialCarriers[0]?.mcs150FormDate) },
+];
+
+const initialDrivers: Driver[] = [
+  { id: 'driver1', name: 'John Doe', contactPhone: '555-1234', contactEmail: 'john.doe@example.com', licenseNumber: 'DL12345' },
+  { id: 'driver2', name: 'Jane Smith', contactPhone: '555-5678', contactEmail: 'jane.smith@example.com', licenseNumber: 'DL67890' },
+];
 
 const initialScheduleEntries: ScheduleEntry[] = [
-  { id: 'sch1', truckId: 'truck1', driverId: 'driver1', title: 'Delivery to LA', start: parseISO('2025-07-20T10:00:00Z'), end: parseISO('2025-07-21T18:00:00Z'), origin: 'Phoenix, AZ', destination: 'Los Angeles, CA', loadValue: 2500.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery' },
-  { id: 'sch2', truckId: 'truck2', driverId: 'driver2', title: 'Pickup from Dallas', start: parseISO('2025-07-22T09:00:00Z'), end: parseISO('2025-07-22T17:00:00Z'), origin: 'Houston, TX', destination: 'Dallas, TX', loadValue: 1800.50, notes: 'Handle with care', color: 'hsl(var(--accent))', scheduleType: 'Pickup' },
-  { id: 'sch3', truckId: 'truck1', title: 'Maintenance Check', start: parseISO('2025-07-24T14:00:00Z'), end: parseISO('2025-07-24T16:00:00Z'), origin: 'Base', destination: 'Garage', color: 'hsl(var(--destructive))', scheduleType: 'Maintenance', notes: 'Oil change and tire rotation' },
-  { id: 'sch4', truckId: 'truck1', driverId: 'driver1', title: 'Long Haul to NY', start: parseISO('2025-07-26T08:00:00Z'), end: parseISO('2025-07-29T17:00:00Z'), origin: 'Los Angeles, CA', destination: 'New York, NY', loadValue: 5500.75, notes: 'High value goods', color: 'hsl(var(--primary))', scheduleType: 'Delivery' },
-  { id: 'sch5', truckId: 'truck3', driverId: 'driver1', title: 'Local Delivery', start: parseISO('2025-08-01T09:00:00Z'), end: parseISO('2025-08-01T15:00:00Z'), origin: 'Warehouse A', destination: 'Customer Site B', loadValue: 750.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery' },
+  { id: 'sch1', truckId: 'truck1', driverId: 'driver1', title: 'Delivery to LA', start: parseISO('2025-07-20T10:00:00Z'), end: parseISO('2025-07-21T18:00:00Z'), origin: 'Phoenix, AZ', destination: 'Los Angeles, CA', loadValue: 2500.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery', isPartialLoad: false },
+  { id: 'sch2', truckId: 'truck2', driverId: 'driver2', title: 'Pickup from Dallas', start: parseISO('2025-07-22T09:00:00Z'), end: parseISO('2025-07-22T17:00:00Z'), origin: 'Houston, TX', destination: 'Dallas, TX', loadValue: 1800.50, notes: 'Handle with care', color: 'hsl(var(--accent))', scheduleType: 'Pickup', isPartialLoad: false },
+  { id: 'sch3', truckId: 'truck1', title: 'Maintenance Check', start: parseISO('2025-07-24T14:00:00Z'), end: parseISO('2025-07-24T16:00:00Z'), origin: 'Base', destination: 'Garage', color: 'hsl(var(--destructive))', scheduleType: 'Maintenance', isPartialLoad: false },
+  { id: 'sch4', truckId: 'truck1', driverId: 'driver1', title: 'Long Haul to NY', start: parseISO('2025-07-26T08:00:00Z'), end: parseISO('2025-07-29T17:00:00Z'), origin: 'Los Angeles, CA', destination: 'New York, NY', loadValue: 5500.75, notes: 'High value goods', color: 'hsl(var(--primary))', scheduleType: 'Delivery', isPartialLoad: false },
+  { id: 'sch5', truckId: 'truck3', driverId: 'driver1', title: 'Local Delivery', start: parseISO('2025-08-01T09:00:00Z'), end: parseISO('2025-08-01T15:00:00Z'), origin: 'Warehouse A', destination: 'Customer Site B', loadValue: 750.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery', isPartialLoad: false },
 ];
 
 const initialShippers: Shipper[] = [
@@ -221,8 +218,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [brokerLoads, setBrokerLoads] = useState<BrokerLoad[]>(initialBrokerLoads);
   const [loadDocuments, setLoadDocuments] = useState<LoadDocument[]>([]);
   const [availableEquipmentPosts, setAvailableEquipmentPosts] = useState<AvailableEquipmentPost[]>(initialAvailableEquipmentPosts);
+  const { toast } = useToast();
 
+  // Getter functions
+  const getTruckById = useCallback((truckId: string) => trucks.find(t => t.id === truckId), [trucks]);
+  const getDriverById = useCallback((driverId: string) => drivers.find(d => d.id === driverId), [drivers]);
+  const getCarrierById = useCallback((carrierId: string) => carriers.find(c => c.id === carrierId), [carriers]);
+  const getScheduleEntryById = useCallback((scheduleEntryId: string) => scheduleEntries.find(s => s.id === scheduleEntryId), [scheduleEntries]);
+  const getShipperById = useCallback((shipperId: string) => shippers.find(s => s.id === shipperId), [shippers]);
+  const getBrokerLoadById = useCallback((loadId: string) => brokerLoads.find(bl => bl.id === loadId), [brokerLoads]);
+  const getAvailableEquipmentPostById = useCallback((postId: string) => availableEquipmentPosts.find(p => p.id === postId), [availableEquipmentPosts]);
 
+  // Truck CRUD
   const addTruck = useCallback((truck: Omit<Truck, 'id'>) => {
     const newTruckData = {
         ...truck,
@@ -249,6 +256,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setScheduleEntries(prev => prev.filter(s => s.truckId !== truckId)); 
   }, []);
 
+  // Driver CRUD
   const addDriver = useCallback((driver: Omit<Driver, 'id'>) => {
     setDrivers(prev => [...prev, { ...driver, id: `driver${Date.now()}` }]);
   }, []);
@@ -261,6 +269,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setScheduleEntries(prev => prev.map(s => s.driverId === driverId ? { ...s, driverId: undefined } : s));
   }, []);
 
+  // Carrier CRUD
  const addCarrier = useCallback((carrierData: Omit<Carrier, 'id'>) => {
     const newCarrier: Carrier = {
       ...carrierData,
@@ -290,9 +299,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     };
     setCarriers(prev => prev.map(c => (c.id === updatedCarrier.id ? updatedCarrier : c)));
 
-    // If carrier's MCS-150 Form Date changed, update their trucks' MC-150 Due Dates
-    const originalMc150Str = originalCarrier?.mcs150FormDate ? parseISO(originalCarrier.mcs150FormDate as string).toISOString() : null;
-    const updatedMc150Str = updatedCarrier.mcs150FormDate ? parseISO(updatedCarrier.mcs150FormDate as string).toISOString() : null;
+    const originalMc150Str = originalCarrier?.mcs150FormDate ? (typeof originalCarrier.mcs150FormDate === 'string' ? parseISO(originalCarrier.mcs150FormDate) : originalCarrier.mcs150FormDate).toISOString() : null;
+    const updatedMc150Str = updatedCarrier.mcs150FormDate ? (typeof updatedCarrier.mcs150FormDate === 'string' ? parseISO(updatedCarrier.mcs150FormDate) : updatedCarrier.mcs150FormDate).toISOString() : null;
 
     if (originalMc150Str !== updatedMc150Str) {
       const newTruckMc150DueDate = calculateMc150DueDate(updatedCarrier.mcs150FormDate);
@@ -304,7 +312,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         )
       );
     }
-  }, [carriers]);
+  }, [carriers]); // Depends on `carriers` state to find the original carrier
 
   const removeCarrier = useCallback((carrierId: string) => {
     setCarriers(prev => prev.filter(c => c.id !== carrierId));
@@ -318,12 +326,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         c.id === carrierId ? { ...c, fmcsaAuthorityStatus: 'Pending Verification' } : c
       ));
 
-      // Simulate API call delay
       setTimeout(() => {
         const randomOutcome = Math.random();
         let status: FmcsaAuthorityStatus;
-        if (randomOutcome < 0.7) { // 70% chance of success
-          status = Math.random() < 0.9 ? 'Verified Active' : 'Verified Inactive'; // 90% of success is Active
+        if (randomOutcome < 0.7) { 
+          status = Math.random() < 0.9 ? 'Verified Active' : 'Verified Inactive'; 
         } else {
           status = 'Verification Failed';
         }
@@ -332,23 +339,69 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           c.id === carrierId ? { ...c, fmcsaAuthorityStatus: status, fmcsaLastChecked: new Date() } : c
         ));
         resolve(status);
-      }, 1500); // 1.5 second delay
+      }, 1500); 
     });
   }, []);
   
-  const addScheduleEntry = useCallback((entry: Omit<ScheduleEntry, 'id'>): ScheduleEntry => {
-    const newEntry = { ...entry, id: `sch${Date.now()}`, start: new Date(entry.start), end: new Date(entry.end) };
-    setScheduleEntries(prev => [...prev, newEntry]);
-    return newEntry;
-  }, []);
-  const updateScheduleEntry = useCallback((updatedEntry: ScheduleEntry) => {
-     const entryWithDates = { ...updatedEntry, start: new Date(updatedEntry.start), end: new Date(updatedEntry.end) };
-    setScheduleEntries(prev => prev.map(s => s.id === updatedEntry.id ? entryWithDates : s));
-  }, []);
+  // Schedule CRUD
+  const addScheduleEntry = useCallback((entry: Omit<ScheduleEntry, 'id'>): ScheduleEntry | null => {
+    const newEntryData = { 
+        ...entry, 
+        id: `sch${Date.now()}`, 
+        start: new Date(entry.start), 
+        end: new Date(entry.end),
+        isPartialLoad: entry.isPartialLoad || false,
+    };
+
+    for (const existingEntry of scheduleEntries) {
+        if (existingEntry.truckId === newEntryData.truckId) {
+            const overlap = newEntryData.start < existingEntry.end && newEntryData.end > existingEntry.start;
+            if (overlap && !newEntryData.isPartialLoad && !existingEntry.isPartialLoad) {
+                toast({
+                    title: "Schedule Conflict",
+                    description: `Truck ${getTruckById(newEntryData.truckId)?.name || newEntryData.truckId} already has a non-partial assignment during this time: "${existingEntry.title}".`,
+                    variant: "destructive",
+                    duration: 5000,
+                });
+                return null;
+            }
+        }
+    }
+    setScheduleEntries(prev => [...prev, newEntryData]);
+    return newEntryData;
+  }, [scheduleEntries, toast, getTruckById]);
+
+  const updateScheduleEntry = useCallback((updatedEntry: ScheduleEntry): ScheduleEntry | null => {
+    const entryWithDates = { 
+        ...updatedEntry, 
+        start: new Date(updatedEntry.start), 
+        end: new Date(updatedEntry.end),
+        isPartialLoad: updatedEntry.isPartialLoad || false,
+    };
+
+    for (const existingEntry of scheduleEntries) {
+        if (existingEntry.truckId === entryWithDates.truckId && existingEntry.id !== entryWithDates.id) {
+            const overlap = entryWithDates.start < existingEntry.end && entryWithDates.end > existingEntry.start;
+            if (overlap && !entryWithDates.isPartialLoad && !existingEntry.isPartialLoad) {
+                 toast({
+                    title: "Schedule Conflict",
+                    description: `Truck ${getTruckById(entryWithDates.truckId)?.name || entryWithDates.truckId} already has a non-partial assignment during this time: "${existingEntry.title}".`,
+                    variant: "destructive",
+                    duration: 5000,
+                });
+                return null;
+            }
+        }
+    }
+    setScheduleEntries(prev => prev.map(s => s.id === entryWithDates.id ? entryWithDates : s));
+    return entryWithDates;
+  }, [scheduleEntries, toast, getTruckById]);
+
   const removeScheduleEntry = useCallback((entryId: string) => {
     setScheduleEntries(prev => prev.filter(s => s.id !== entryId));
   }, []);
 
+  // Dispatch Fee & Invoice
   const addDispatchFeeRecord = useCallback((recordData: Omit<DispatchFeeRecord, 'id' | 'calculatedDate' | 'status' | 'feeAmount'>) => {
     const feeAmount = recordData.originalLoadAmount * 0.10;
     const newRecord: DispatchFeeRecord = {
@@ -428,6 +481,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setBrokerLoads(prev => [newLoad, ...prev]);
     return newLoad;
   }, []);
+
   const updateBrokerLoad = useCallback((updatedLoad: BrokerLoad) => {
      const loadWithDates = {
         ...updatedLoad,
@@ -458,7 +512,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const truck = trucks.find(t => t.id === truckId && t.carrierId === carrierId);
     const currentShipper = load ? shippers.find(s => s.id === load.shipperId) : undefined;
 
-
     if (load && truck && load.status === 'Available') {
       const updatedLoad: BrokerLoad = {
         ...load,
@@ -468,9 +521,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         status: 'Booked',
         confirmationNumber: load.confirmationNumber || `CONF-${Date.now().toString().slice(-6)}`
       };
-      updateBrokerLoad(updatedLoad);
-
-      addScheduleEntry({
+      // This updateBrokerLoad call seems to be missing its dependency: updateBrokerLoad itself or setBrokerLoads
+      // For now, we'll assume it's stable or handled by useMemo later.
+      // To be safe, it should be in the dependency array if it's a useCallback from this scope.
+      // Or if updateBrokerLoad comes from props, it should be listed.
+      // Since it's defined in this scope, it will be listed in useMemo's deps.
+      
+      const scheduleResult = addScheduleEntry({
         truckId: truckId,
         driverId: driverId,
         title: `Broker Load: ${load.commodity} (${load.originAddress} to ${load.destinationAddress})`,
@@ -483,12 +540,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         scheduleType: 'Delivery', 
         color: 'hsl(260, 80%, 60%)', 
         brokerLoadId: load.id,
+        isPartialLoad: false, 
       });
+
+      if (!scheduleResult) {
+          updateBrokerLoad({ ...load, status: 'Available' }); 
+          return undefined; 
+      }
+      // Successfully created schedule, now update the broker load definitively
+      setBrokerLoads(prev => prev.map(bl => bl.id === updatedLoad.id ? updatedLoad : bl));
       return updatedLoad;
     }
     return undefined;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brokerLoads, trucks, addScheduleEntry, updateBrokerLoad, shippers]);
+  }, [brokerLoads, trucks, shippers, addScheduleEntry, toast, updateBrokerLoad]);
 
 
    const addLoadDocument = useCallback((doc: Omit<LoadDocument, 'id' | 'uploadDate'>) => {
@@ -501,6 +565,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setLoadDocuments(prev => [newDocument, ...prev]);
   }, []);
 
+  // Available Equipment Posts
   const addAvailableEquipmentPost = useCallback((postData: Omit<AvailableEquipmentPost, 'id' | 'postedDate' | 'status'>): AvailableEquipmentPost => {
     const newPost: AvailableEquipmentPost = {
       ...postData,
@@ -529,32 +594,41 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
-  const getTruckById = useCallback((truckId: string) => trucks.find(t => t.id === truckId), [trucks]);
-  const getDriverById = useCallback((driverId: string) => drivers.find(d => d.id === driverId), [drivers]);
-  const getCarrierById = useCallback((carrierId: string) => carriers.find(c => c.id === carrierId), [carriers]);
-  const getScheduleEntryById = useCallback((scheduleEntryId: string) => scheduleEntries.find(s => s.id === scheduleEntryId), [scheduleEntries]);
-  const getShipperById = useCallback((shipperId: string) => shippers.find(s => s.id === shipperId), [shippers]);
-  const getBrokerLoadById = useCallback((loadId: string) => brokerLoads.find(bl => bl.id === loadId), [brokerLoads]);
-  const getAvailableEquipmentPostById = useCallback((postId: string) => availableEquipmentPosts.find(p => p.id === postId), [availableEquipmentPosts]);
-
+  // Memoize the context value
+  const contextValue = useMemo(() => ({
+    trucks, drivers, carriers, scheduleEntries, dispatchFeeRecords, invoices,
+    shippers, brokerLoads, loadDocuments, availableEquipmentPosts,
+    getTruckById, getDriverById, getCarrierById, getScheduleEntryById,
+    getShipperById, getBrokerLoadById, getAvailableEquipmentPostById,
+    addTruck, updateTruck, removeTruck,
+    addDriver, updateDriver, removeDriver,
+    addCarrier, updateCarrier, removeCarrier, verifyCarrierFmcsa,
+    addScheduleEntry, updateScheduleEntry, removeScheduleEntry,
+    addDispatchFeeRecord, updateDispatchFeeRecordStatus,
+    createInvoiceForCarrier, updateInvoiceStatus,
+    addShipper, updateShipper, removeShipper,
+    addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule,
+    addLoadDocument,
+    addAvailableEquipmentPost, updateAvailableEquipmentPost, removeAvailableEquipmentPost,
+  }), [
+    trucks, drivers, carriers, scheduleEntries, dispatchFeeRecords, invoices,
+    shippers, brokerLoads, loadDocuments, availableEquipmentPosts,
+    getTruckById, getDriverById, getCarrierById, getScheduleEntryById,
+    getShipperById, getBrokerLoadById, getAvailableEquipmentPostById,
+    addTruck, updateTruck, removeTruck,
+    addDriver, updateDriver, removeDriver,
+    addCarrier, updateCarrier, removeCarrier, verifyCarrierFmcsa,
+    addScheduleEntry, updateScheduleEntry, removeScheduleEntry,
+    addDispatchFeeRecord, updateDispatchFeeRecordStatus,
+    createInvoiceForCarrier, updateInvoiceStatus,
+    addShipper, updateShipper, removeShipper,
+    addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule,
+    addLoadDocument,
+    addAvailableEquipmentPost, updateAvailableEquipmentPost, removeAvailableEquipmentPost,
+  ]);
 
   return (
-    <AppDataContext.Provider value={{
-      trucks, drivers, carriers, scheduleEntries, dispatchFeeRecords, invoices,
-      shippers, brokerLoads, loadDocuments, availableEquipmentPosts,
-      addTruck, updateTruck, removeTruck,
-      addDriver, updateDriver, removeDriver,
-      addCarrier, updateCarrier, removeCarrier, verifyCarrierFmcsa,
-      addScheduleEntry, updateScheduleEntry, removeScheduleEntry,
-      addDispatchFeeRecord, updateDispatchFeeRecordStatus,
-      createInvoiceForCarrier, updateInvoiceStatus,
-      addShipper, updateShipper, removeShipper,
-      addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule,
-      addLoadDocument,
-      addAvailableEquipmentPost, updateAvailableEquipmentPost, removeAvailableEquipmentPost,
-      getTruckById, getDriverById, getCarrierById, getScheduleEntryById,
-      getShipperById, getBrokerLoadById, getAvailableEquipmentPostById,
-    }}>
+    <AppDataContext.Provider value={contextValue}>
       {children}
     </AppDataContext.Provider>
   );
@@ -567,3 +641,5 @@ export function useAppData() {
   }
   return context;
 }
+
+
