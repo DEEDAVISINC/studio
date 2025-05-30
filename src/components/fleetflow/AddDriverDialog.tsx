@@ -1,3 +1,4 @@
+
 "use client";
 import { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,16 +25,16 @@ const driverSchema = z.object({
   licenseNumber: z.string().min(5, { message: "License number must be at least 5 characters." }),
 });
 
-type DriverFormData = z.infer<typeof driverSchema>;
+export type DriverFormData = z.infer<typeof driverSchema>;
 
 interface AddDriverDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onAddDriver: (driver: Omit<Driver, 'id'>) => void;
+  onSaveDriver: (data: DriverFormData) => void;
   driverToEdit?: Driver | null;
 }
 
-export function AddDriverDialog({ isOpen, onOpenChange, onAddDriver, driverToEdit }: AddDriverDialogProps) {
+export function AddDriverDialog({ isOpen, onOpenChange, onSaveDriver, driverToEdit }: AddDriverDialogProps) {
   const { toast } = useToast();
   const form = useForm<DriverFormData>({
     resolver: zodResolver(driverSchema),
@@ -46,26 +47,28 @@ export function AddDriverDialog({ isOpen, onOpenChange, onAddDriver, driverToEdi
   });
 
   useEffect(() => {
-    if (driverToEdit) {
-      form.reset(driverToEdit);
-    } else {
-      form.reset({
-        name: '',
-        contactPhone: '',
-        contactEmail: '',
-        licenseNumber: '',
-      });
+    if (isOpen) {
+      if (driverToEdit) {
+        form.reset(driverToEdit);
+      } else {
+        form.reset({
+          name: '',
+          contactPhone: '',
+          contactEmail: '',
+          licenseNumber: '',
+        });
+      }
     }
   }, [driverToEdit, form, isOpen]);
 
   const onSubmit = (data: DriverFormData) => {
-    onAddDriver(data);
+    onSaveDriver(data);
     toast({
-      title: "Driver Added",
-      description: `Driver "${data.name}" has been successfully added.`,
+      title: driverToEdit ? "Driver Updated" : "Driver Added",
+      description: `Driver "${data.name}" has been successfully ${driverToEdit ? 'updated' : 'added'}.`,
     });
-    form.reset();
-    onOpenChange(false);
+    // No need to call onOpenChange(false) here as it's handled by the page
+    // No need to call form.reset() here if the page handles closing and re-initializing
   };
 
   return (
