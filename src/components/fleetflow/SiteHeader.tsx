@@ -12,14 +12,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState, useEffect } from 'react';
 
 export function SiteHeader() {
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-card px-4 sm:px-6 shadow-sm">
       <Link href="/dashboard/overview" className="flex items-center gap-2 text-lg font-semibold md:text-base">
         <TruckIcon className="h-8 w-8 text-primary" />
         <span className="text-xl font-bold text-foreground">FleetFlow</span>
-        <span className="ml-2 text-sm font-medium text-muted-foreground hidden md:inline">THE ULTIMATE TMS</span>
+        {hasMounted && (
+          <span className="ml-2 text-sm font-medium text-muted-foreground hidden md:inline">THE ULTIMATE TMS</span>
+        )}
       </Link>
       <div className="ml-auto flex items-center gap-4">
         {/* Placeholder for future elements like search or notifications */}
