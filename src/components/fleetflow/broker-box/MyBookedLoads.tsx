@@ -17,12 +17,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileUp, PackageCheck, ListOrdered, Eye, AlertTriangle, StickyNote } from "lucide-react";
+import { FileUp, PackageCheck, ListOrdered, Eye, AlertTriangle, StickyNote, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Alert } from '@/components/ui/alert';
 
 interface MyBookedLoadsProps {
   bookedLoads: BrokerLoad[];
@@ -140,6 +141,11 @@ export function MyBookedLoads({
               <p><strong>Equipment:</strong> {load.equipmentType}</p>
               {truck && <p><strong>Assigned Truck:</strong> {truck.name} ({truck.licensePlate})</p>}
               {driver && <p><strong>Assigned Driver:</strong> {driver.name}</p>}
+              {load.notes && (
+                <p className="text-xs italic text-muted-foreground pt-1">
+                  <span className="font-semibold not-italic text-foreground">Broker Notes:</span> {load.notes}
+                </p>
+              )}
             </CardContent>
             <CardFooter className="border-t pt-3 flex justify-end gap-2">
                 {docsForThisLoad.length > 0 && (
@@ -166,8 +172,17 @@ export function MyBookedLoads({
             <DialogDescription>Record a new document. Actual file upload is simulated.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            {selectedLoadForDocs?.status === 'Delivered' && (
+              <Alert variant="default" className="bg-green-50 border-green-300 text-green-700">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <div className="ml-2">
+                  <p className="font-medium">This load is marked as Delivered.</p>
+                  <p className="text-xs">Consider uploading the Bill of Lading (BOL) and/or Proof of Delivery (POD).</p>
+                </div>
+              </Alert>
+            )}
             {selectedLoadForDocs?.notes && (
-              <div className="mb-4 p-3 border border-yellow-300 bg-yellow-50 rounded-md">
+              <div className="mt-2 mb-3 p-3 border border-yellow-300 bg-yellow-50 rounded-md">
                 <h4 className="text-sm font-semibold text-yellow-700 flex items-center gap-2">
                   <StickyNote className="h-4 w-4 text-yellow-600" />
                   Important Load Notes:
