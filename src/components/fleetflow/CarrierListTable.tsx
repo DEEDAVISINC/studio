@@ -4,13 +4,14 @@ import type { Carrier, FmcsaAuthorityStatus } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Trash2, Edit3, Eye, Phone, Mail, ShieldCheck, ShieldAlert, ShieldQuestion, Loader2, CheckCircle, AlertCircleIcon, Copy } from "lucide-react";
+import { MoreHorizontal, Trash2, Edit3, Eye, Phone, Mail, ShieldCheck, ShieldAlert, ShieldQuestion, Loader2, CheckCircle, AlertCircleIcon, Copy, FileText } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useAppData } from "@/contexts/AppDataContext";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useCallback } from 'react';
 import { format } from "date-fns";
+import { ManageCarrierDocumentsDialog } from "./ManageCarrierDocumentsDialog";
 
 interface CarrierListTableProps {
   carriers: Carrier[];
@@ -19,9 +20,10 @@ interface CarrierListTableProps {
 }
 
 export function CarrierListTable({ carriers, onEdit, onDelete }: CarrierListTableProps) {
-  const { verifyCarrierFmcsa } = useAppData();
+  const { verifyCarrierFmcsa, carrierDocuments, addCarrierDocument, removeCarrierDocument } = useAppData();
   const { toast } = useToast();
   const [verifyingCarrierId, setVerifyingCarrierId] = useState<string | null>(null);
+  const [managingDocsCarrier, setManagingDocsCarrier] = useState<Carrier | null>(null);
 
   const handleVerifyFmcsa = useCallback(async (carrier: Carrier) => {
     if (!carrier.mcNumber && !carrier.usDotNumber) {
@@ -97,6 +99,7 @@ Email: ${carrier.contactEmail}
   }
 
   return (
+    <>
     <div className="rounded-md border">
     <Table>
       <TableHeader>
@@ -151,10 +154,13 @@ Email: ${carrier.contactEmail}
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onEdit(carrier)}>
-                       <Edit3 className="mr-2 h-4 w-4" /> Edit
+                       <Edit3 className="mr-2 h-4 w-4" /> Edit Carrier
                     </DropdownMenuItem>
                      <DropdownMenuItem onClick={() => handleCopyContactCard(carrier)}>
                        <Copy className="mr-2 h-4 w-4" /> Copy Contact Card
+                    </DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => setManagingDocsCarrier(carrier)}>
+                       <FileText className="mr-2 h-4 w-4" /> Manage Documents
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleVerifyFmcsa(carrier)} disabled={verifyingCarrierId === carrier.id}>
                         {verifyingCarrierId === carrier.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />} 
@@ -163,7 +169,7 @@ Email: ${carrier.contactEmail}
                     <DropdownMenuSeparator />
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Carrier
                       </DropdownMenuItem>
                     </AlertDialogTrigger>
                   </DropdownMenuContent>
@@ -189,6 +195,18 @@ Email: ${carrier.contactEmail}
       </TableBody>
     </Table>
     </div>
+    {managingDocsCarrier && (
+        <ManageCarrierDocumentsDialog
+          isOpen={!!managingDocsCarrier}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setManagingDocsCarrier(null);
+          }}
+          carrier={managingDocsCarrier}
+          documents={carrierDocuments.filter(doc => doc.carrierId === managingDocsCarrier.id)}
+          onAddDocument={addCarrierDocument}
+          onRemoveDocument={removeCarrierDocument}
+        />
+      )}
+    </>
   );
 }
-

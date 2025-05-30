@@ -2,7 +2,7 @@
 "use client";
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus, ScheduleType, ManualLineItem } from '@/lib/types';
+import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus, ScheduleType, ManualLineItem, CarrierDocument, CarrierDocumentType } from '@/lib/types';
 import { addDays, parseISO, addYears, startOfWeek, isPast, endOfDay } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,6 +17,7 @@ interface AppDataContextType {
   brokerLoads: BrokerLoad[];
   loadDocuments: LoadDocument[];
   availableEquipmentPosts: AvailableEquipmentPost[];
+  carrierDocuments: CarrierDocument[];
   
   addTruck: (truck: Omit<Truck, 'id'>) => void;
   updateTruck: (truck: Truck) => void;
@@ -57,6 +58,8 @@ interface AppDataContextType {
 
 
   addLoadDocument: (doc: Omit<LoadDocument, 'id' | 'uploadDate'>) => void;
+  addCarrierDocument: (doc: Omit<CarrierDocument, 'id' | 'uploadDate'>) => CarrierDocument;
+  removeCarrierDocument: (docId: string) => void;
 
   addAvailableEquipmentPost: (post: Omit<AvailableEquipmentPost, 'id' | 'postedDate' | 'status'>) => AvailableEquipmentPost;
   updateAvailableEquipmentPost: (post: AvailableEquipmentPost) => void;
@@ -69,6 +72,7 @@ interface AppDataContextType {
   getShipperById: (shipperId: string) => Shipper | undefined;
   getBrokerLoadById: (loadId: string) => BrokerLoad | undefined;
   getAvailableEquipmentPostById: (postId: string) => AvailableEquipmentPost | undefined;
+  getCarrierDocumentById: (docId: string) => CarrierDocument | undefined;
   checkAndSetCarrierBookableStatus: (carrierId: string) => void;
 }
 
@@ -169,7 +173,7 @@ const initialScheduleEntries: ScheduleEntry[] = [
   { id: 'sch1', truckId: 'truck1', driverId: 'driver1', title: 'Delivery to LA', start: parseISO('2025-07-20T10:00:00Z'), end: parseISO('2025-07-21T18:00:00Z'), origin: 'Phoenix, AZ', destination: 'Los Angeles, CA', loadValue: 2500.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery', isPartialLoad: false, isTeamDriven: false },
   { id: 'sch2', truckId: 'truck2', driverId: 'driver2', title: 'Pickup from Dallas', start: parseISO('2025-07-22T09:00:00Z'), end: parseISO('2025-07-22T17:00:00Z'), origin: 'Houston, TX', destination: 'Dallas, TX', loadValue: 1800.50, notes: 'Handle with care', color: 'hsl(var(--accent))', scheduleType: 'Pickup', isPartialLoad: false, isTeamDriven: false },
   { id: 'sch3', truckId: 'truck1', title: 'Maintenance Check', start: parseISO('2025-07-24T14:00:00Z'), end: parseISO('2025-07-24T16:00:00Z'), origin: 'Base', destination: 'Garage', color: 'hsl(var(--destructive))', scheduleType: 'Maintenance', isPartialLoad: false, isTeamDriven: false },
-  { id: 'sch4', truckId: 'truck1', driverId: 'driver1', title: 'Long Haul to NY', start: parseISO('2025-07-26T08:00:00Z'), end: parseISO('2025-07-29T17:00:00Z'), origin: 'Los Angeles, CA', destination: 'New York, NY', loadValue: 5500.75, notes: 'High value goods', color: 'hsl(var(--primary))', scheduleType: 'Delivery', isPartialLoad: false, isTeamDriven: true }, // Example of team driven
+  { id: 'sch4', truckId: 'truck1', driverId: 'driver1', title: 'Long Haul to NY', start: parseISO('2025-07-26T08:00:00Z'), end: parseISO('2025-07-29T17:00:00Z'), origin: 'Los Angeles, CA', destination: 'New York, NY', loadValue: 5500.75, notes: 'High value goods\nBroker Notes: Team driving preferred for quick delivery. Fragile items.', color: 'hsl(var(--primary))', scheduleType: 'Delivery', isPartialLoad: false, isTeamDriven: true }, // Example of team driven
   { id: 'sch5', truckId: 'truck3', driverId: 'driver1', title: 'Local Delivery', start: parseISO('2025-08-01T09:00:00Z'), end: parseISO('2025-08-01T15:00:00Z'), origin: 'Warehouse A', destination: 'Customer Site B', loadValue: 750.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery', isPartialLoad: false, isTeamDriven: false },
 ];
 
@@ -214,6 +218,11 @@ const initialAvailableEquipmentPosts: AvailableEquipmentPost[] = [
   }
 ];
 
+const initialCarrierDocuments: CarrierDocument[] = [
+    { id: 'cdoc1', carrierId: 'carrier1', documentName: 'W9-SpeedyLog-2024.pdf', documentType: 'W9', uploadDate: parseISO('2024-01-10T00:00:00Z'), fileUrl: 'simulated/w9_speedy.pdf' },
+    { id: 'cdoc2', carrierId: 'carrier1', documentName: 'COI-SpeedyLog-Exp20251031.pdf', documentType: 'Insurance Certificate', uploadDate: parseISO('2023-11-01T00:00:00Z'), fileUrl: 'simulated/coi_speedy.pdf' },
+];
+
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const [trucks, setTrucks] = useState<Truck[]>(initialTrucks);
@@ -226,6 +235,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [brokerLoads, setBrokerLoads] = useState<BrokerLoad[]>(initialBrokerLoads);
   const [loadDocuments, setLoadDocuments] = useState<LoadDocument[]>([]);
   const [availableEquipmentPosts, setAvailableEquipmentPosts] = useState<AvailableEquipmentPost[]>(initialAvailableEquipmentPosts);
+  const [carrierDocuments, setCarrierDocuments] = useState<CarrierDocument[]>(initialCarrierDocuments);
   const { toast } = useToast();
 
   // Getter functions
@@ -236,6 +246,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const getShipperById = useCallback((shipperId: string) => shippers.find(s => s.id === shipperId), [shippers]);
   const getBrokerLoadById = useCallback((loadId: string) => brokerLoads.find(bl => bl.id === loadId), [brokerLoads]);
   const getAvailableEquipmentPostById = useCallback((postId: string) => availableEquipmentPosts.find(p => p.id === postId), [availableEquipmentPosts]);
+  const getCarrierDocumentById = useCallback((docId: string) => carrierDocuments.find(d => d.id === docId), [carrierDocuments]);
+
 
   const checkAndSetCarrierBookableStatus = useCallback((carrierId: string) => {
     setCarriers(prevCarriers => {
@@ -367,6 +379,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setAvailableEquipmentPosts(prev => prev.filter(p => p.carrierId !== carrierId));
     setInvoices(prev => prev.filter(inv => inv.carrierId !== carrierId));
     setDispatchFeeRecords(prev => prev.filter(fee => fee.carrierId !== carrierId));
+    setCarrierDocuments(prev => prev.filter(doc => doc.carrierId !== carrierId));
   }, []);
 
   const verifyCarrierFmcsa = useCallback(async (carrierId: string): Promise<FmcsaAuthorityStatus> => {
@@ -751,10 +764,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       ...doc,
       id: `doc${Date.now()}`,
       uploadDate: new Date(),
-      fileUrl: `simulated_path/to/${doc.documentName.replace(/\s+/g, '_')}`, 
+      fileUrl: `simulated_path/to/${doc.documentName.replace(/\s+/g, '_')}.pdf`, 
     };
     setLoadDocuments(prev => [newDocument, ...prev]);
   }, []);
+
+  // Carrier Documents
+  const addCarrierDocument = useCallback((docData: Omit<CarrierDocument, 'id' | 'uploadDate'>): CarrierDocument => {
+    const newDocument: CarrierDocument = {
+        ...docData,
+        id: `cdoc${Date.now()}`,
+        uploadDate: new Date(),
+        fileUrl: `simulated_carrier_docs/${docData.documentName.replace(/\s+/g, '_')}.pdf`
+    };
+    setCarrierDocuments(prev => [newDocument, ...prev.sort((a,b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime())]);
+    return newDocument;
+  }, []);
+
+  const removeCarrierDocument = useCallback((docId: string) => {
+    setCarrierDocuments(prev => prev.filter(d => d.id !== docId));
+  }, []);
+
 
   // Available Equipment Posts
   const addAvailableEquipmentPost = useCallback((postData: Omit<AvailableEquipmentPost, 'id' | 'postedDate' | 'status'>): AvailableEquipmentPost => {
@@ -789,9 +819,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const contextValue = useMemo(() => ({
     trucks, drivers, carriers, scheduleEntries, dispatchFeeRecords, invoices,
-    shippers, brokerLoads, loadDocuments, availableEquipmentPosts,
+    shippers, brokerLoads, loadDocuments, availableEquipmentPosts, carrierDocuments,
     getTruckById, getDriverById, getCarrierById, getScheduleEntryById,
-    getShipperById, getBrokerLoadById, getAvailableEquipmentPostById,
+    getShipperById, getBrokerLoadById, getAvailableEquipmentPostById, getCarrierDocumentById,
     addTruck, updateTruck, removeTruck,
     addDriver, updateDriver, removeDriver,
     addCarrier, updateCarrier, removeCarrier, verifyCarrierFmcsa,
@@ -801,14 +831,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addManualLineItemToInvoice, removeManualLineItemFromInvoice, approveManualLineItem, rejectManualLineItem,
     addShipper, updateShipper, removeShipper,
     addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule,
-    addLoadDocument,
+    addLoadDocument, addCarrierDocument, removeCarrierDocument,
     addAvailableEquipmentPost, updateAvailableEquipmentPost, removeAvailableEquipmentPost,
     checkAndSetCarrierBookableStatus,
   }), [
     trucks, drivers, carriers, scheduleEntries, dispatchFeeRecords, invoices,
-    shippers, brokerLoads, loadDocuments, availableEquipmentPosts,
+    shippers, brokerLoads, loadDocuments, availableEquipmentPosts, carrierDocuments,
     getTruckById, getDriverById, getCarrierById, getScheduleEntryById,
-    getShipperById, getBrokerLoadById, getAvailableEquipmentPostById,
+    getShipperById, getBrokerLoadById, getAvailableEquipmentPostById, getCarrierDocumentById,
     addTruck, updateTruck, removeTruck,
     addDriver, updateDriver, removeDriver,
     addCarrier, updateCarrier, removeCarrier, verifyCarrierFmcsa,
@@ -818,7 +848,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addManualLineItemToInvoice, removeManualLineItemFromInvoice, approveManualLineItem, rejectManualLineItem,
     addShipper, updateShipper, removeShipper,
     addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule, 
-    addLoadDocument,
+    addLoadDocument, addCarrierDocument, removeCarrierDocument,
     addAvailableEquipmentPost, updateAvailableEquipmentPost, removeAvailableEquipmentPost,
     checkAndSetCarrierBookableStatus,
   ]);

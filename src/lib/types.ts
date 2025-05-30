@@ -224,3 +224,15 @@ export interface AvailableEquipmentPost {
   complianceDocsReady?: boolean; // New field
 }
 
+// Carrier Documents
+export type CarrierDocumentType = 'W9' | 'Operating Authority' | 'Insurance Certificate' | 'Contract' | 'Other';
+export const CARRIER_DOCUMENT_TYPES: CarrierDocumentType[] = ['W9', 'Operating Authority', 'Insurance Certificate', 'Contract', 'Other'];
+
+export interface CarrierDocument {
+  id: string;
+  carrierId: string;
+  documentName: string;
+  documentType: CarrierDocumentType;
+  uploadDate: Date;
+  fileUrl?: string; // Placeholder for actual file path/URL
+}
