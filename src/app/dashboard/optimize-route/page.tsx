@@ -90,7 +90,7 @@ export default function OptimizeRoutePage() {
                 </div>
             </div>
             <Button onClick={calculateFee} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                <Percent className="mr-2 h-4 w-4" /> Calculate 10% Dispatch Fee
+                <Percent className="mr-2 h-4 w-4" /> Load Dispatch
             </Button>
             {dispatchFee !== null && (
                 <div className="mt-4 p-3 bg-muted rounded-md text-center">
