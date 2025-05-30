@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { suggestOptimalRoutes, type SuggestOptimalRoutesInput, type SuggestOptimalRoutesOutput } from "@/ai/flows/suggest-optimal-routes";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarIcon, Loader2, Wand2, MapIcon } from "lucide-react"; // Added MapIcon
+import { CalendarIcon, Loader2, Wand2, MapIcon, MapPinOff } from "lucide-react"; // Added MapIcon & MapPinOff
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { PRIORITIES, type Priority } from "@/lib/types";
