@@ -64,8 +64,17 @@ export function AvailableBrokerLoads({
         setSelectedTruckId('');
         setSelectedDriverId('');
     } else {
-        // Error toast is handled by AppDataContext if schedule conflict
-        // If it's another reason (e.g. load not available), can add a toast here.
+        // If acceptedLoad is undefined, it means assignment failed.
+        // AppDataContext.addScheduleEntry would have shown a specific conflict toast.
+        // AppDataContext.assignLoadToCarrierAndCreateSchedule would have shown a carrier unbookable toast.
+        // This toast serves as a clear feedback in this dialog if the booking operation doesn't succeed.
+        toast({
+            title: "Assignment Failed",
+            description: "Could not assign the load. This may be due to a schedule conflict or carrier restrictions. Please review the schedule or carrier status and try again.",
+            variant: "destructive",
+            duration: 7000, 
+        });
+        // Dialog remains open for user to make changes.
     }
   };
   
@@ -218,3 +227,5 @@ Load ID: ${load.id}
   );
 }
 
+
+    
