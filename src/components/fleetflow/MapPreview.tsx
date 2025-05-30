@@ -60,7 +60,7 @@ export function MapPreview({apiKey, origin, destination}: MapPreviewProps) {
   }
 
   return (
-    <LoadScript googleMapsApiKey={apiKey} libraries={['places']}>
+    <LoadScript googleMapsApiKey={apiKey} libraries={['places', 'marker']}>
       <GoogleMap mapContainerStyle={containerStyle} center={defaultCenter} zoom={4}>
         {origin && destination && (
           <DirectionsService
