@@ -17,7 +17,7 @@ export default function OptimizeRoutePage() {
   const calculateFee = () => {
     const amount = parseFloat(loadAmountForFee);
     if (!isNaN(amount) && amount > 0) {
-      const fee = amount * 0.10;
+      const fee = amount * 0.10; // Still calculates 10%
       setDispatchFee(fee);
       toast({
         title: "Dispatch Fee Calculated",
@@ -69,7 +69,7 @@ export default function OptimizeRoutePage() {
             <div>
                 <CardTitle>Dispatch Fee Calculator</CardTitle>
                 <CardDescription>
-                Quickly calculate a 10% dispatch fee based on the load's dollar amount.
+                Quickly calculate dispatch fee.
                 </CardDescription>
             </div>
         </CardHeader>
