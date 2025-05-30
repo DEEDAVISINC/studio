@@ -84,14 +84,20 @@ export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, 
         const carrier = carriers.find(c => c.id === truckToEdit.carrierId);
         if (carrier && carrier.mcs150FormDate) {
           try {
-            derivedMc150DueDate = addYears(parseISO(carrier.mcs150FormDate as string), 2);
+            let baseDate: Date;
+            if (typeof carrier.mcs150FormDate === 'string') {
+              baseDate = parseISO(carrier.mcs150FormDate);
+            } else {
+              baseDate = carrier.mcs150FormDate; // It's already a Date object
+            }
+            derivedMc150DueDate = addYears(baseDate, 2);
           } catch (e) { console.error("Error parsing carrier mcs150FormDate for prefill", e); }
         }
       }
 
       form.reset({
         ...truckToEdit,
-        driverId: truckToEdit.driverId || undefined,
+        driverId: truckToEdit.driverId || undefined, // Ensure undefined for UNASSIGNED_DRIVER_VALUE
         mc150DueDate: derivedMc150DueDate,
         permitExpiryDate: truckToEdit.permitExpiryDate ? (typeof truckToEdit.permitExpiryDate === 'string' ? parseISO(truckToEdit.permitExpiryDate) : truckToEdit.permitExpiryDate) : null,
         taxDueDate: truckToEdit.taxDueDate ? (typeof truckToEdit.taxDueDate === 'string' ? parseISO(truckToEdit.taxDueDate) : truckToEdit.taxDueDate) : null,
@@ -103,7 +109,7 @@ export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, 
         model: '',
         year: new Date().getFullYear(),
         carrierId: '',
-        driverId: undefined,
+        driverId: undefined, // Ensure undefined for UNASSIGNED_DRIVER_VALUE
         maintenanceStatus: 'Good',
         mc150DueDate: null,
         permitExpiryDate: null,
@@ -119,7 +125,13 @@ export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, 
     const selectedCarrier = carriers.find(c => c.id === watchedCarrierId);
     if (selectedCarrier && selectedCarrier.mcs150FormDate) {
       try {
-        const newDueDate = addYears(parseISO(selectedCarrier.mcs150FormDate as string), 2);
+        let baseDate: Date;
+        if (typeof selectedCarrier.mcs150FormDate === 'string') {
+          baseDate = parseISO(selectedCarrier.mcs150FormDate);
+        } else {
+          baseDate = selectedCarrier.mcs150FormDate; // It's already a Date object
+        }
+        const newDueDate = addYears(baseDate, 2);
         form.setValue("mc150DueDate", newDueDate, { shouldValidate: true, shouldDirty: true });
       } catch (e) {
         console.error("Error calculating due date from carrier's MCS-150 date:", e);
@@ -128,6 +140,7 @@ export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, 
     } else if (selectedCarrier && !selectedCarrier.mcs150FormDate) {
       // If carrier has no MCS-150 date, you might want to clear mc150DueDate
       // or leave it for manual input. For now, it only pre-fills if carrier has the date.
+      // form.setValue("mc150DueDate", null, { shouldValidate: true, shouldDirty: true }); // Example to clear if desired
     }
   }, [watchedCarrierId, carriers, form, isOpen]);
 
@@ -151,7 +164,7 @@ export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, 
       title: truckToEdit ? "Truck Updated" : "Truck Added",
       description: `Truck "${data.name}" has been successfully ${truckToEdit ? 'updated' : 'added'}.`,
     });
-    form.reset();
+    // form.reset(); // No need to reset here if onOpenChange(false) closes and re-initializes
     onOpenChange(false);
   };
 
@@ -232,7 +245,10 @@ export function AddTruckDialog({ isOpen, onOpenChange, onAddTruck, truckToEdit, 
           <div className="grid grid-cols-2 gap-3">
              <div>
                 <Label htmlFor="carrierId" className="text-foreground">Carrier</Label>
-                <Select onValueChange={(value) => form.setValue("carrierId", value)} value={form.watch("carrierId") || ""}>
+                <Select 
+                    onValueChange={(value) => form.setValue("carrierId", value)} 
+                    value={form.watch("carrierId") || ""}
+                >
                 <SelectTrigger id="carrierId" className="mt-1 bg-background border-border focus:ring-primary">
                     <SelectValue placeholder="Select a carrier" />
                 </SelectTrigger>
