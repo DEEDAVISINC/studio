@@ -2,7 +2,7 @@
 "use client";
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus, ScheduleType } from '@/lib/types';
+import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus, ScheduleType, ManualLineItem } from '@/lib/types';
 import { addDays, parseISO, addYears, startOfWeek, isPast, endOfDay } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 
@@ -40,6 +40,9 @@ interface AppDataContextType {
   
   createInvoiceForCarrier: (carrierId: string, feeRecordIds: string[]) => Invoice | undefined;
   updateInvoiceStatus: (invoiceId: string, newStatus: Invoice['status']) => void;
+  addManualLineItemToInvoice: (invoiceId: string, itemData: Omit<ManualLineItem, 'id'>) => void;
+  removeManualLineItemFromInvoice: (invoiceId: string, lineItemId: string) => void;
+
 
   addShipper: (shipper: Omit<Shipper, 'id'>) => void;
   updateShipper: (shipper: Shipper) => void;
@@ -479,7 +482,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setScheduleEntries(prev => prev.filter(s => s.id !== entryId));
   }, []);
 
-  // Dispatch Fee & Invoice
+  // Dispatch Fee & Invoice related functions
   const addDispatchFeeRecord = useCallback((recordData: Omit<DispatchFeeRecord, 'id' | 'calculatedDate' | 'status' | 'feeAmount'>) => {
     const feeAmount = recordData.originalLoadAmount * 0.10;
     const newRecord: DispatchFeeRecord = {
@@ -498,6 +501,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     ));
   }, []);
 
+  const calculateInvoiceTotal = useCallback((dispatchFeeIds: string[], manualItems?: ManualLineItem[]): number => {
+    let total = 0;
+    dispatchFeeIds.forEach(feeId => {
+      const feeRecord = dispatchFeeRecords.find(rec => rec.id === feeId);
+      if (feeRecord) {
+        total += feeRecord.feeAmount;
+      }
+    });
+    if (manualItems) {
+      manualItems.forEach(item => {
+        total += item.type === 'charge' ? item.amount : -item.amount;
+      });
+    }
+    return total;
+  }, [dispatchFeeRecords]);
+
   const createInvoiceForCarrier = useCallback((carrierId: string, feeRecordIds: string[]): Invoice | undefined => {
     const recordsToInvoice = dispatchFeeRecords.filter(
       rec => rec.carrierId === carrierId && feeRecordIds.includes(rec.id) && rec.status === 'Pending'
@@ -505,7 +524,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     if (recordsToInvoice.length === 0) return undefined;
 
-    const totalAmount = recordsToInvoice.reduce((sum, rec) => sum + rec.feeAmount, 0);
+    const totalDispatchFees = recordsToInvoice.reduce((sum, rec) => sum + rec.feeAmount, 0);
     const newInvoiceId = `inv${Date.now()}`;
     const currentDate = new Date(); 
     
@@ -523,7 +542,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       invoiceDate: currentDate,
       dueDate: dueDateIsWednesday, 
       dispatchFeeRecordIds: recordsToInvoice.map(rec => rec.id),
-      totalAmount,
+      manualLineItems: [], // Initialize with empty manual items
+      totalAmount: totalDispatchFees, // Initial total is sum of fees
       status: 'Sent', 
     };
 
@@ -547,6 +567,34 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         checkAndSetCarrierBookableStatus(carrierIdToUpdate);
     }
   }, [checkAndSetCarrierBookableStatus]);
+
+  const addManualLineItemToInvoice = useCallback((invoiceId: string, itemData: Omit<ManualLineItem, 'id'>) => {
+    setInvoices(prevInvoices => 
+      prevInvoices.map(inv => {
+        if (inv.id === invoiceId) {
+          const newLineItem: ManualLineItem = { ...itemData, id: `mli-${Date.now()}` };
+          const updatedManualLineItems = [...(inv.manualLineItems || []), newLineItem];
+          const newTotalAmount = calculateInvoiceTotal(inv.dispatchFeeRecordIds, updatedManualLineItems);
+          return { ...inv, manualLineItems: updatedManualLineItems, totalAmount: newTotalAmount };
+        }
+        return inv;
+      })
+    );
+  }, [calculateInvoiceTotal]);
+
+  const removeManualLineItemFromInvoice = useCallback((invoiceId: string, lineItemId: string) => {
+    setInvoices(prevInvoices =>
+      prevInvoices.map(inv => {
+        if (inv.id === invoiceId) {
+          const updatedManualLineItems = (inv.manualLineItems || []).filter(item => item.id !== lineItemId);
+          const newTotalAmount = calculateInvoiceTotal(inv.dispatchFeeRecordIds, updatedManualLineItems);
+          return { ...inv, manualLineItems: updatedManualLineItems, totalAmount: newTotalAmount };
+        }
+        return inv;
+      })
+    );
+  }, [calculateInvoiceTotal]);
+
 
   // Shipper CRUD
   const addShipper = useCallback((shipper: Omit<Shipper, 'id'>) => {
@@ -600,10 +648,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
   
   const assignLoadToCarrierAndCreateSchedule = useCallback((loadId: string, carrierId: string, truckId: string, driverId?: string): BrokerLoad | undefined => {
-    const load = getBrokerLoadById(loadId); // Use getter
-    const truck = getTruckById(truckId);    // Use getter
-    const currentCarrier = getCarrierById(carrierId); // Use getter
-    const currentShipper = load ? getShipperById(load.shipperId) : undefined; // Use getter
+    const load = getBrokerLoadById(loadId); 
+    const truck = getTruckById(truckId);    
+    const currentCarrier = getCarrierById(carrierId); 
+    const currentShipper = load ? getShipperById(load.shipperId) : undefined; 
 
     if (load && truck && truck.carrierId === carrierId && load.status === 'Available') {
       if (!currentCarrier || !currentCarrier.isBookable) {
@@ -650,7 +698,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setBrokerLoads(prev => prev.map(bl => bl.id === loadId ? {...bl, status: 'Available', assignedCarrierId: undefined, assignedTruckId: undefined, assignedDriverId: undefined } : bl));
           return undefined; 
       }
-      updateBrokerLoad(updatedLoadData); // Use existing updateBrokerLoad
+      updateBrokerLoad(updatedLoadData); 
       return updatedLoadData;
     }
     return undefined;
@@ -708,7 +756,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addCarrier, updateCarrier, removeCarrier, verifyCarrierFmcsa,
     addScheduleEntry, updateScheduleEntry, removeScheduleEntry,
     addDispatchFeeRecord, updateDispatchFeeRecordStatus,
-    createInvoiceForCarrier, updateInvoiceStatus,
+    createInvoiceForCarrier, updateInvoiceStatus, addManualLineItemToInvoice, removeManualLineItemFromInvoice,
     addShipper, updateShipper, removeShipper,
     addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule,
     addLoadDocument,
@@ -724,7 +772,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addCarrier, updateCarrier, removeCarrier, verifyCarrierFmcsa,
     addScheduleEntry, updateScheduleEntry, removeScheduleEntry, 
     addDispatchFeeRecord, updateDispatchFeeRecordStatus,
-    createInvoiceForCarrier, updateInvoiceStatus,
+    createInvoiceForCarrier, updateInvoiceStatus, addManualLineItemToInvoice, removeManualLineItemFromInvoice,
     addShipper, updateShipper, removeShipper,
     addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule, 
     addLoadDocument,

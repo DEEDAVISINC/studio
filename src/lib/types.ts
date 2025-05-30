@@ -131,6 +131,13 @@ export interface DispatchFeeRecord {
   invoiceId?: string; // Link to an Invoice
 }
 
+export interface ManualLineItem {
+  id: string;
+  description: string;
+  amount: number; // positive for charge, negative for credit (or use type to determine)
+  type: 'charge' | 'credit';
+}
+
 export interface Invoice {
   id: string;
   invoiceNumber: string; // User-friendly invoice number e.g., INV-2024-001
@@ -138,6 +145,7 @@ export interface Invoice {
   invoiceDate: Date;
   dueDate: Date; // Wednesday of the week the invoice is generated
   dispatchFeeRecordIds: string[]; // IDs of DispatchFeeRecords included
+  manualLineItems?: ManualLineItem[]; // Added for manual adjustments
   totalAmount: number;
   status: 'Draft' | 'Sent' | 'Paid' | 'Void';
 }
