@@ -1,3 +1,4 @@
+
 "use client";
 import Link from 'next/link';
 import { TruckIcon } from 'lucide-react'; // Using TruckIcon as a generic logo icon
@@ -18,6 +19,7 @@ export function SiteHeader() {
       <Link href="/dashboard/overview" className="flex items-center gap-2 text-lg font-semibold md:text-base">
         <TruckIcon className="h-8 w-8 text-primary" />
         <span className="text-xl font-bold text-foreground">FleetFlow</span>
+        <span className="ml-2 text-sm font-medium text-muted-foreground hidden md:inline">THE ULTIMATE TMS</span>
       </Link>
       <div className="ml-auto flex items-center gap-4">
         {/* Placeholder for future elements like search or notifications */}
