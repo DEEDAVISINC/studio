@@ -9,12 +9,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileUp, PackageCheck, ListOrdered, Eye, AlertTriangle } from "lucide-react";
+import { FileUp, PackageCheck, ListOrdered, Eye, AlertTriangle, StickyNote } from "lucide-react"; // Added StickyNote
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 interface MyBookedLoadsProps {
   bookedLoads: BrokerLoad[]; // Loads assigned to the current carrier
@@ -96,6 +98,7 @@ export function MyBookedLoads({
   }
 
   return (
+    <TooltipProvider>
     <div className="space-y-6">
       {bookedLoads.map(load => {
         const shipper = getShipperById(load.shipperId);
@@ -107,7 +110,19 @@ export function MyBookedLoads({
           <Card key={load.id} className="shadow-md">
             <CardHeader>
               <div className="flex justify-between items-start">
-                <CardTitle className="text-lg">{load.commodity}</CardTitle>
+                 <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg">{load.commodity}</CardTitle>
+                    {load.notes && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <StickyNote className="h-4 w-4 text-yellow-500" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs whitespace-pre-wrap break-words">{load.notes}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                </div>
                 <Badge className={getStatusColor(load.status) + " text-white"}>{load.status}</Badge>
               </div>
               <CardDescription>
@@ -122,7 +137,7 @@ export function MyBookedLoads({
               <p><strong>Equipment:</strong> {load.equipmentType}</p>
               {truck && <p><strong>Assigned Truck:</strong> {truck.name} ({truck.licensePlate})</p>}
               {driver && <p><strong>Assigned Driver:</strong> {driver.name}</p>}
-              {load.notes && <p className="text-xs text-muted-foreground mt-2"><strong>Notes:</strong> {load.notes}</p>}
+              {load.notes && <p className="text-xs text-muted-foreground pt-1"><strong>Broker Notes:</strong> {load.notes}</p>}
             </CardContent>
             <CardFooter className="border-t pt-3 flex justify-end gap-2">
                 {docsForThisLoad.length > 0 && (
@@ -205,5 +220,8 @@ export function MyBookedLoads({
         </DialogContent>
       </Dialog>
     </div>
+    </TooltipProvider>
   );
 }
+
+    

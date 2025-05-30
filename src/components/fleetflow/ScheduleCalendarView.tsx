@@ -16,8 +16,10 @@ import {
   addWeeks, 
   subWeeks 
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Users } from "lucide-react"; // Added Users icon
-import { Badge } from "@/components/ui/badge"; // Added Badge import
+import { ChevronLeft, ChevronRight, Users, StickyNote } from "lucide-react"; // Added StickyNote
+import { Badge } from '@/components/ui/badge'; 
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 interface ScheduleCalendarViewProps {
   events: ScheduleEntry[];
@@ -60,6 +62,7 @@ export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: 
   const goToNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
 
   return (
+    <TooltipProvider>
     <Card className="shadow-lg h-full flex flex-col">
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -120,8 +123,22 @@ export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: 
                                 title={`Driver: ${getDriverName(event.driverId)}\n${event.origin} to ${event.destination}\n${format(new Date(event.start), 'p')} - ${format(new Date(event.end), 'p')}${event.notes ? `\nNotes: ${event.notes}` : ''}${event.isTeamDriven ? '\n(Team Driven)' : ''}${event.isPartialLoad ? '\n(Partial Load)' : ''}`}
                               >
                                 <div className="flex justify-between items-start">
-                                  <p className="font-semibold truncate">{event.title}</p>
-                                  {event.isTeamDriven && <Users className="h-3 w-3 text-white/80 shrink-0 ml-1" title="Team Driven"/>}
+                                  <p className="font-semibold truncate flex items-center gap-1">
+                                    {event.title}
+                                    {event.notes && (
+                                      <Tooltip>
+                                        <TooltipTrigger onClick={(e) => e.stopPropagation()} asChild>
+                                          <StickyNote className="h-3 w-3 text-yellow-300 shrink-0" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="max-w-xs whitespace-pre-wrap break-words">
+                                          <p>{event.notes}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                  </p>
+                                  <div className="flex items-center shrink-0 ml-1">
+                                    {event.isTeamDriven && <Users className="h-3 w-3 text-white/80" title="Team Driven"/>}
+                                  </div>
                                 </div>
                                 <p className="truncate">{format(new Date(event.start), 'p')} - {format(new Date(event.end), 'p')}</p>
                                 {event.isPartialLoad && <Badge variant="secondary" className="mt-0.5 text-xs py-0 px-1 h-auto bg-black/20 text-white">Partial</Badge>}
@@ -141,5 +158,8 @@ export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: 
         </ScrollArea>
       </CardContent>
     </Card>
+    </TooltipProvider>
   );
 }
+
+    

@@ -7,11 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-import { ThumbsUp, MapPin, CalendarDays, TruckIcon as EqIcon, DollarSign, ClipboardList, UserCheck, AlertTriangle, XCircle } from "lucide-react"; // Added XCircle
+import { ThumbsUp, MapPin, CalendarDays, TruckIcon as EqIcon, DollarSign, ClipboardList, UserCheck, AlertTriangle, XCircle, StickyNote } from "lucide-react"; // Added StickyNote
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 interface AvailableBrokerLoadsProps {
   brokerLoads: BrokerLoad[]; // Should already be filtered for 'Available' status
@@ -36,7 +38,7 @@ export function AvailableBrokerLoads({
   const [selectedLoadToAccept, setSelectedLoadToAccept] = useState<BrokerLoad | null>(null);
   const [selectedCarrierId, setSelectedCarrierId] = useState<string>('');
   const [selectedTruckId, setSelectedTruckId] = useState<string>('');
-  const [selectedDriverId, setSelectedDriverId] = useState<string>(UNASSIGNED_DRIVER_BROKER_BOX_VALUE); // Default to unassigned
+  const [selectedDriverId, setSelectedDriverId] = useState<string>(UNASSIGNED_DRIVER_BROKER_BOX_VALUE); 
 
   const availableTrucksForSelectedCarrier = trucks.filter(t => t.carrierId === selectedCarrierId && t.maintenanceStatus === 'Good');
   const availableDriversForSelectedCarrier = drivers.filter(d => {
@@ -63,22 +65,17 @@ export function AvailableBrokerLoads({
     const acceptedLoad = onAcceptLoad(selectedLoadToAccept.id, selectedCarrierId, selectedTruckId, driverToAssign);
     if (acceptedLoad) {
         toast({ title: "Load Accepted!", description: `Load ${acceptedLoad.commodity} assigned to ${selectedCarrierObject?.name}. A schedule entry has been created.` });
-        setSelectedLoadToAccept(null); // Close dialog
+        setSelectedLoadToAccept(null); 
         setSelectedCarrierId('');
         setSelectedTruckId('');
         setSelectedDriverId(UNASSIGNED_DRIVER_BROKER_BOX_VALUE);
     } else {
-        // If acceptedLoad is undefined, it means assignment failed.
-        // AppDataContext.addScheduleEntry would have shown a specific conflict toast.
-        // AppDataContext.assignLoadToCarrierAndCreateSchedule would have shown a carrier unbookable toast.
-        // This toast serves as a clear feedback in this dialog if the booking operation doesn't succeed.
         toast({
             title: "Assignment Failed",
             description: "Could not assign the load. This may be due to a schedule conflict or carrier restrictions. Please review the schedule or carrier status and try again.",
             variant: "destructive",
             duration: 7000, 
         });
-        // Dialog remains open for user to make changes.
     }
   };
   
@@ -115,6 +112,7 @@ Load ID: ${load.id}
   }
 
   return (
+    <TooltipProvider>
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {brokerLoads.map(load => {
         const shipper = getShipperById(load.shipperId);
@@ -122,7 +120,19 @@ Load ID: ${load.id}
           <Card key={load.id} className="shadow-lg hover:shadow-xl transition-shadow flex flex-col">
             <CardHeader>
               <div className="flex justify-between items-start">
-                <CardTitle className="text-lg text-primary">{load.commodity}</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-lg text-primary">{load.commodity}</CardTitle>
+                   {load.notes && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <StickyNote className="h-4 w-4 text-yellow-500" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs whitespace-pre-wrap break-words">{load.notes}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                </div>
                 <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white">Available</Badge>
               </div>
               <CardDescription>Shipper: {shipper?.name || 'N/A'}</CardDescription>
@@ -133,7 +143,6 @@ Load ID: ${load.id}
               <div className="flex items-center gap-2"><EqIcon className="h-4 w-4 text-muted-foreground" /> {load.equipmentType}</div>
               <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-muted-foreground" /> <span className="font-semibold text-lg">${load.offeredRate.toLocaleString()}</span></div>
               {load.weight && <p className="text-xs text-muted-foreground">Weight: {load.weight} lbs</p>}
-              {load.notes && <p className="text-xs text-muted-foreground">Notes: {load.notes}</p>}
             </CardContent>
             <CardFooter className="border-t pt-4 flex gap-2">
               <Button variant="outline" size="sm" onClick={() => copyLoadInfoToClipboard(load)}>
@@ -228,6 +237,7 @@ Load ID: ${load.id}
         );
       })}
     </div>
+    </TooltipProvider>
   );
 }
 

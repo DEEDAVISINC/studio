@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import type { BrokerLoad, Shipper, Carrier, Truck, Driver, BrokerLoadStatus } from "@/lib/types";
 import { BROKER_LOAD_STATUSES } from '@/lib/types';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Edit3, Copy, Filter, MoreVertical } from "lucide-react";
+import { PlusCircle, Edit3, Copy, Filter, MoreVertical, StickyNote } from "lucide-react"; // Added StickyNote
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
@@ -29,6 +29,8 @@ import { format, parseISO } from "date-fns";
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 const brokerLoadSchema = z.object({
   shipperId: z.string().min(1, "Shipper is required."),
@@ -108,9 +110,8 @@ export function ManageBrokerLoads({ brokerLoads, shippers, onAddBrokerLoad, onUp
     try {
         if (editingLoad) {
             const updatedLoadData: BrokerLoad = {
-                ...editingLoad, // Preserves IDs, postedDate, status etc.
-                ...data, // Overwrites with form data
-                // Ensure dates are correctly formatted if they are Date objects
+                ...editingLoad, 
+                ...data, 
                 pickupDate: data.pickupDate, 
                 deliveryDate: data.deliveryDate,
             };
@@ -164,6 +165,7 @@ Load ID: ${load.id}
 
 
   return (
+    <TooltipProvider>
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
@@ -205,7 +207,21 @@ Load ID: ${load.id}
                 const shipper = getShipperById(load.shipperId);
                 return (
                   <TableRow key={load.id}>
-                    <TableCell className="font-medium">{load.commodity}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {load.commodity}
+                        {load.notes && (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <StickyNote className="h-4 w-4 text-yellow-500" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="max-w-xs whitespace-pre-wrap break-words">{load.notes}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{shipper?.name || 'N/A'}</TableCell>
                     <TableCell>
                         <div className="text-xs">{load.originAddress}</div>
@@ -373,6 +389,7 @@ Load ID: ${load.id}
         </DialogContent>
       </Dialog>
     </div>
+    </TooltipProvider>
   );
 }
 
