@@ -93,6 +93,7 @@ export interface ScheduleEntry {
   scheduleType?: ScheduleType; 
   brokerLoadId?: string; // Link to BrokerLoad if created from Broker Box
   isPartialLoad?: boolean; // Added for overlap logic
+  isTeamDriven?: boolean; // Added for HOS/ELD simplified rule
 }
 
 // For AI Route Optimization Form

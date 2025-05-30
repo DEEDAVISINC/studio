@@ -23,9 +23,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { ScheduleEntry, Truck, Driver, ScheduleType } from "@/lib/types";
 import { SCHEDULE_TYPES } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarIcon, DollarSign, Package } from 'lucide-react';
+import { CalendarIcon, DollarSign, Package, Users } from 'lucide-react'; // Added Users icon
 import { cn } from '@/lib/utils';
-import { Checkbox } from '@/components/ui/checkbox'; // Added Checkbox import
+import { Checkbox } from '@/components/ui/checkbox';
 
 const scheduleEntrySchema = z.object({
   title: z.string().min(2, { message: "Title must be at least 2 characters." }),
@@ -39,7 +39,8 @@ const scheduleEntrySchema = z.object({
   notes: z.string().optional(),
   color: z.string().optional(),
   scheduleType: z.enum(SCHEDULE_TYPES).default('Delivery'),
-  isPartialLoad: z.boolean().optional().default(false), // Added isPartialLoad
+  isPartialLoad: z.boolean().optional().default(false),
+  isTeamDriven: z.boolean().optional().default(false), // Added isTeamDriven
 }).refine(data => data.end >= data.start, {
   message: "End date cannot be before start date.",
   path: ["end"],
@@ -50,7 +51,7 @@ type ScheduleEntryFormData = z.infer<typeof scheduleEntrySchema>;
 interface AddScheduleEntryDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onAddScheduleEntry: (entry: Omit<ScheduleEntry, 'id'> | ScheduleEntry) => ScheduleEntry | null; // Updated return type
+  onAddScheduleEntry: (entry: Omit<ScheduleEntry, 'id'> | ScheduleEntry) => ScheduleEntry | null;
   entryToEdit?: ScheduleEntry | null;
   trucks: Truck[];
   drivers: Driver[];
@@ -84,7 +85,8 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
       notes: '',
       color: colorOptions[0].value,
       scheduleType: 'Delivery',
-      isPartialLoad: false, // Added default
+      isPartialLoad: false,
+      isTeamDriven: false, // Added default
     },
   });
 
@@ -99,7 +101,8 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
         driverId: entryToEdit.driverId || undefined,
         loadValue: entryToEdit.loadValue ?? undefined, 
         scheduleType: entryToEdit.scheduleType || 'Delivery',
-        isPartialLoad: entryToEdit.isPartialLoad || false, // Reset isPartialLoad
+        isPartialLoad: entryToEdit.isPartialLoad || false,
+        isTeamDriven: entryToEdit.isTeamDriven || false, // Reset isTeamDriven
       });
     } else {
       form.reset({
@@ -114,7 +117,8 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
         notes: '',
         color: colorOptions[0].value,
         scheduleType: 'Delivery',
-        isPartialLoad: false, // Reset isPartialLoad
+        isPartialLoad: false,
+        isTeamDriven: false, // Reset isTeamDriven
       });
     }
   }, [entryToEdit, form, isOpen]);
@@ -135,7 +139,6 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
       form.reset();
       onOpenChange(false);
     } 
-    // If result is null, the context has already shown a toast for the conflict
   };
 
   return (
@@ -318,6 +321,19 @@ export function AddScheduleEntryDialog({ isOpen, onOpenChange, onAddScheduleEntr
             </Label>
           </div>
           {form.formState.errors.isPartialLoad && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.isPartialLoad.message}</p>}
+
+          <div className="flex items-center space-x-2 pt-1">
+            <Checkbox
+              id="isTeamDriven"
+              checked={form.watch("isTeamDriven")}
+              onCheckedChange={(checked) => form.setValue("isTeamDriven", !!checked)}
+            />
+            <Label htmlFor="isTeamDriven" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              Team Driven (allows extended hours beyond 14-hour limit)
+            </Label>
+             <Users className="h-4 w-4 text-muted-foreground ml-1" />
+          </div>
+          {form.formState.errors.isTeamDriven && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.isTeamDriven.message}</p>}
 
 
           <DialogFooter className="pt-4 sticky bottom-0 bg-card pb-1">

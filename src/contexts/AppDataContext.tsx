@@ -1,9 +1,9 @@
 
 "use client";
 import type { ReactNode } from 'react';
-import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'; // Added useEffect
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus } from '@/lib/types';
-import { addDays, parseISO, addYears, startOfWeek, isPast, endOfDay } from 'date-fns'; // Added startOfWeek, isPast, endOfDay
+import { addDays, parseISO, addYears, startOfWeek, isPast, endOfDay } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 
 interface AppDataContextType {
@@ -64,7 +64,7 @@ interface AppDataContextType {
   getShipperById: (shipperId: string) => Shipper | undefined;
   getBrokerLoadById: (loadId: string) => BrokerLoad | undefined;
   getAvailableEquipmentPostById: (postId: string) => AvailableEquipmentPost | undefined;
-  checkAndSetCarrierBookableStatus: (carrierId: string) => void; // Added
+  checkAndSetCarrierBookableStatus: (carrierId: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -161,11 +161,11 @@ const initialDrivers: Driver[] = [
 ];
 
 const initialScheduleEntries: ScheduleEntry[] = [
-  { id: 'sch1', truckId: 'truck1', driverId: 'driver1', title: 'Delivery to LA', start: parseISO('2025-07-20T10:00:00Z'), end: parseISO('2025-07-21T18:00:00Z'), origin: 'Phoenix, AZ', destination: 'Los Angeles, CA', loadValue: 2500.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery', isPartialLoad: false },
-  { id: 'sch2', truckId: 'truck2', driverId: 'driver2', title: 'Pickup from Dallas', start: parseISO('2025-07-22T09:00:00Z'), end: parseISO('2025-07-22T17:00:00Z'), origin: 'Houston, TX', destination: 'Dallas, TX', loadValue: 1800.50, notes: 'Handle with care', color: 'hsl(var(--accent))', scheduleType: 'Pickup', isPartialLoad: false },
-  { id: 'sch3', truckId: 'truck1', title: 'Maintenance Check', start: parseISO('2025-07-24T14:00:00Z'), end: parseISO('2025-07-24T16:00:00Z'), origin: 'Base', destination: 'Garage', color: 'hsl(var(--destructive))', scheduleType: 'Maintenance', isPartialLoad: false },
-  { id: 'sch4', truckId: 'truck1', driverId: 'driver1', title: 'Long Haul to NY', start: parseISO('2025-07-26T08:00:00Z'), end: parseISO('2025-07-29T17:00:00Z'), origin: 'Los Angeles, CA', destination: 'New York, NY', loadValue: 5500.75, notes: 'High value goods', color: 'hsl(var(--primary))', scheduleType: 'Delivery', isPartialLoad: false },
-  { id: 'sch5', truckId: 'truck3', driverId: 'driver1', title: 'Local Delivery', start: parseISO('2025-08-01T09:00:00Z'), end: parseISO('2025-08-01T15:00:00Z'), origin: 'Warehouse A', destination: 'Customer Site B', loadValue: 750.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery', isPartialLoad: false },
+  { id: 'sch1', truckId: 'truck1', driverId: 'driver1', title: 'Delivery to LA', start: parseISO('2025-07-20T10:00:00Z'), end: parseISO('2025-07-21T18:00:00Z'), origin: 'Phoenix, AZ', destination: 'Los Angeles, CA', loadValue: 2500.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery', isPartialLoad: false, isTeamDriven: false },
+  { id: 'sch2', truckId: 'truck2', driverId: 'driver2', title: 'Pickup from Dallas', start: parseISO('2025-07-22T09:00:00Z'), end: parseISO('2025-07-22T17:00:00Z'), origin: 'Houston, TX', destination: 'Dallas, TX', loadValue: 1800.50, notes: 'Handle with care', color: 'hsl(var(--accent))', scheduleType: 'Pickup', isPartialLoad: false, isTeamDriven: false },
+  { id: 'sch3', truckId: 'truck1', title: 'Maintenance Check', start: parseISO('2025-07-24T14:00:00Z'), end: parseISO('2025-07-24T16:00:00Z'), origin: 'Base', destination: 'Garage', color: 'hsl(var(--destructive))', scheduleType: 'Maintenance', isPartialLoad: false, isTeamDriven: false },
+  { id: 'sch4', truckId: 'truck1', driverId: 'driver1', title: 'Long Haul to NY', start: parseISO('2025-07-26T08:00:00Z'), end: parseISO('2025-07-29T17:00:00Z'), origin: 'Los Angeles, CA', destination: 'New York, NY', loadValue: 5500.75, notes: 'High value goods', color: 'hsl(var(--primary))', scheduleType: 'Delivery', isPartialLoad: false, isTeamDriven: true }, // Example of team driven
+  { id: 'sch5', truckId: 'truck3', driverId: 'driver1', title: 'Local Delivery', start: parseISO('2025-08-01T09:00:00Z'), end: parseISO('2025-08-01T15:00:00Z'), origin: 'Warehouse A', destination: 'Customer Site B', loadValue: 750.00, color: 'hsl(var(--primary))', scheduleType: 'Delivery', isPartialLoad: false, isTeamDriven: false },
 ];
 
 const initialShippers: Shipper[] = [
@@ -246,10 +246,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (carrierSentInvoices.length > 0) {
             const today = new Date();
             for (const inv of carrierSentInvoices) {
-                const invoiceDueDateIsWednesday = new Date(inv.dueDate); // This is the Wednesday it's due
-                const endOfDueWednesday = endOfDay(invoiceDueDateIsWednesday); // Wednesday 11:59:59 PM
+                const invoiceDueDateIsWednesday = new Date(inv.dueDate);
+                const endOfDueWednesday = endOfDay(invoiceDueDateIsWednesday); 
 
-                if (isPast(endOfDueWednesday)) { // If today is past that Wednesday
+                if (isPast(endOfDueWednesday)) { 
                     hasUnpaidOverdueInvoices = true;
                     break; 
                 }
@@ -259,18 +259,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (carrier.isBookable !== newIsBookable) {
             return prevCarriers.map(c => c.id === carrierId ? { ...c, isBookable: newIsBookable } : c);
         }
-        return prevCarriers; // No change needed
+        return prevCarriers;
     });
-  }, [invoices]); // Removed setCarriers from deps, relies on functional update
+  }, [invoices]);
 
    useEffect(() => {
-    // Check all carrier statuses on initial load or when invoices change significantly
-    // (e.g. new invoice added, existing one paid/voided)
     carriers.forEach(carrier => {
         checkAndSetCarrierBookableStatus(carrier.id);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [invoices, carriers.length]); // Rerun if invoice list or number of carriers changes
+  }, [invoices, carriers.length, checkAndSetCarrierBookableStatus]);
 
 
   // Truck CRUD
@@ -322,7 +319,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       mcs150FormDate: carrierData.mcs150FormDate ? new Date(carrierData.mcs150FormDate) : undefined,
       fmcsaAuthorityStatus: 'Not Verified', 
       fmcsaLastChecked: undefined,
-      isBookable: true, // New carriers are bookable by default
+      isBookable: true,
     };
     setCarriers(prev => [...prev, newCarrier]);
     
@@ -341,7 +338,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       insurancePolicyExpirationDate: updatedCarrierData.insurancePolicyExpirationDate ? new Date(updatedCarrierData.insurancePolicyExpirationDate) : undefined,
       mcs150FormDate: updatedCarrierData.mcs150FormDate ? new Date(updatedCarrierData.mcs150FormDate) : undefined,
       fmcsaLastChecked: updatedCarrierData.fmcsaLastChecked ? new Date(updatedCarrierData.fmcsaLastChecked) : undefined,
-      isBookable: updatedCarrierData.isBookable, // Ensure this is carried over
+      isBookable: updatedCarrierData.isBookable,
     };
     setCarriers(prev => prev.map(c => (c.id === updatedCarrier.id ? updatedCarrier : c)));
 
@@ -399,8 +396,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         start: new Date(entry.start), 
         end: new Date(entry.end),
         isPartialLoad: entry.isPartialLoad || false,
+        isTeamDriven: entry.isTeamDriven || false,
     };
 
+    // Check for non-partial overlaps
     for (const existingEntry of scheduleEntries) {
         if (existingEntry.truckId === newEntryData.truckId) {
             const overlap = newEntryData.start < existingEntry.end && newEntryData.end > existingEntry.start;
@@ -415,6 +414,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             }
         }
     }
+    
+    // Check 14-hour rule for non-team driven loads
+    const durationHours = (newEntryData.end.getTime() - newEntryData.start.getTime()) / (1000 * 60 * 60);
+    if (durationHours > 14 && !newEntryData.isTeamDriven) {
+        toast({
+            title: "HOS Warning",
+            description: `Schedule duration for "${newEntryData.title}" exceeds 14 hours and is not team driven. Please adjust or mark as team driven.`,
+            variant: "destructive",
+            duration: 6000,
+        });
+        return null;
+    }
+
     setScheduleEntries(prev => [...prev, newEntryData]);
     return newEntryData;
   }, [scheduleEntries, toast, getTruckById]);
@@ -425,8 +437,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         start: new Date(updatedEntry.start), 
         end: new Date(updatedEntry.end),
         isPartialLoad: updatedEntry.isPartialLoad || false,
+        isTeamDriven: updatedEntry.isTeamDriven || false,
     };
 
+    // Check for non-partial overlaps
     for (const existingEntry of scheduleEntries) {
         if (existingEntry.truckId === entryWithDates.truckId && existingEntry.id !== entryWithDates.id) {
             const overlap = entryWithDates.start < existingEntry.end && entryWithDates.end > existingEntry.start;
@@ -441,6 +455,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             }
         }
     }
+
+    // Check 14-hour rule for non-team driven loads
+    const durationHours = (entryWithDates.end.getTime() - entryWithDates.start.getTime()) / (1000 * 60 * 60);
+    if (durationHours > 14 && !entryWithDates.isTeamDriven) {
+        toast({
+            title: "HOS Warning",
+            description: `Schedule duration for "${entryWithDates.title}" exceeds 14 hours and is not team driven. Please adjust or mark as team driven.`,
+            variant: "destructive",
+            duration: 6000,
+        });
+        return null;
+    }
+
     setScheduleEntries(prev => prev.map(s => s.id === entryWithDates.id ? entryWithDates : s));
     return entryWithDates;
   }, [scheduleEntries, toast, getTruckById]);
@@ -477,15 +504,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     const totalAmount = recordsToInvoice.reduce((sum, rec) => sum + rec.feeAmount, 0);
     const newInvoiceId = `inv${Date.now()}`;
-    const currentDate = new Date(); // Invoice creation date (e.g. Monday)
+    const currentDate = new Date(); 
     
     const year = currentDate.getFullYear();
     const invCountForYear = invoices.filter(inv => new Date(inv.invoiceDate).getFullYear() === year).length + 1;
     const invoiceNumber = `INV-${year}-${String(invCountForYear).padStart(3, '0')}`;
 
-    // Due date is Wednesday of the week the invoice is generated
-    const mondayOfThisWeek = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday
-    const dueDateIsWednesday = addDays(mondayOfThisWeek, 2); // Wednesday
+    const mondayOfThisWeek = startOfWeek(currentDate, { weekStartsOn: 1 }); 
+    const dueDateIsWednesday = addDays(mondayOfThisWeek, 2);
 
     const newInvoice: Invoice = {
       id: newInvoiceId,
@@ -495,12 +521,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       dueDate: dueDateIsWednesday, 
       dispatchFeeRecordIds: recordsToInvoice.map(rec => rec.id),
       totalAmount,
-      status: 'Sent', // Default to 'Sent' immediately
+      status: 'Sent', 
     };
 
     setInvoices(prev => [...prev, newInvoice]);
     recordsToInvoice.forEach(rec => updateDispatchFeeRecordStatus(rec.id, 'Invoiced', newInvoiceId));
-    checkAndSetCarrierBookableStatus(carrierId); // Check status after new 'Sent' invoice
+    checkAndSetCarrierBookableStatus(carrierId); 
     
     return newInvoice;
   }, [dispatchFeeRecords, invoices, updateDispatchFeeRecordStatus, checkAndSetCarrierBookableStatus]);
@@ -605,18 +631,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         color: 'hsl(260, 80%, 60%)', 
         brokerLoadId: load.id,
         isPartialLoad: false, 
+        isTeamDriven: false, // Default broker loads to not team-driven; can be edited in schedule
       });
 
       if (!scheduleResult) {
-          // Schedule conflict, do not update broker load status to Booked
           return undefined; 
       }
-      // Successfully created schedule, now update the broker load definitively
       setBrokerLoads(prev => prev.map(bl => bl.id === updatedLoadData.id ? updatedLoadData : bl));
       return updatedLoadData;
     }
     return undefined;
-  }, [brokerLoads, trucks, shippers, carriers, addScheduleEntry, toast]);
+  }, [brokerLoads, trucks, shippers, carriers, addScheduleEntry, toast, updateBrokerLoadStatus]);
 
 
    const addLoadDocument = useCallback((doc: Omit<LoadDocument, 'id' | 'uploadDate'>) => {
@@ -658,7 +683,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
-  // Memoize the context value
   const contextValue = useMemo(() => ({
     trucks, drivers, carriers, scheduleEntries, dispatchFeeRecords, invoices,
     shippers, brokerLoads, loadDocuments, availableEquipmentPosts,
@@ -690,7 +714,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule,
     addLoadDocument,
     addAvailableEquipmentPost, updateAvailableEquipmentPost, removeAvailableEquipmentPost,
-    checkAndSetCarrierBookableStatus, // Added
+    checkAndSetCarrierBookableStatus,
   ]);
 
   return (
@@ -707,4 +731,3 @@ export function useAppData() {
   }
   return context;
 }
-

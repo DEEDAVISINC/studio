@@ -16,13 +16,14 @@ import {
   addWeeks, 
   subWeeks 
 } from 'date-fns';
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Users } from "lucide-react"; // Added Users icon
+import { Badge } from "@/components/ui/badge"; // Added Badge import
 
 interface ScheduleCalendarViewProps {
   events: ScheduleEntry[];
   onEventClick: (event: ScheduleEntry) => void;
   trucks: Truck[];
-  drivers: Driver[]; // Keep for potential future use in cell display, though not primary for grid structure
+  drivers: Driver[];
 }
 
 export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: ScheduleCalendarViewProps) {
@@ -46,10 +47,9 @@ export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: 
           if (event.truckId !== truck.id) return false;
           const eventStart = new Date(event.start);
           const eventEnd = new Date(event.end);
-          // Check if the event occurs on this specific day
           return isSameDay(eventStart, day) || isSameDay(eventEnd, day) || 
-                 (eventStart < day && eventEnd > day) || // Spans across the day
-                 isWithinInterval(day, { start: eventStart, end: eventEnd }); // Catches events starting/ending on this day
+                 (eventStart < day && eventEnd > day) || 
+                 isWithinInterval(day, { start: eventStart, end: eventEnd });
         }).sort((a,b) => new Date(a.start).getTime() - new Date(b.start).getTime());
       });
     });
@@ -74,7 +74,7 @@ export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: 
           </Button>
         </div>
         <CardDescription className="text-center">
-          Timeline view of truck schedules for the week. Click an entry to edit.
+          Timeline view of truck schedules for the week. Click an entry to edit. Overlaps only allowed for partial loads. HOS rules apply.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden p-0 md:p-2">
@@ -117,16 +117,19 @@ export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: 
                                 onClick={() => onEventClick(event)}
                                 className="p-1.5 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity text-white"
                                 style={{ backgroundColor: event.color || 'hsl(var(--primary))' }}
-                                title={`Driver: ${getDriverName(event.driverId)}\n${event.origin} to ${event.destination}\n${format(new Date(event.start), 'p')} - ${format(new Date(event.end), 'p')}${event.notes ? `\nNotes: ${event.notes}` : ''}`}
+                                title={`Driver: ${getDriverName(event.driverId)}\n${event.origin} to ${event.destination}\n${format(new Date(event.start), 'p')} - ${format(new Date(event.end), 'p')}${event.notes ? `\nNotes: ${event.notes}` : ''}${event.isTeamDriven ? '\n(Team Driven)' : ''}${event.isPartialLoad ? '\n(Partial Load)' : ''}`}
                               >
-                                <p className="font-semibold truncate">{event.title}</p>
+                                <div className="flex justify-between items-start">
+                                  <p className="font-semibold truncate">{event.title}</p>
+                                  {event.isTeamDriven && <Users className="h-3 w-3 text-white/80 shrink-0 ml-1" title="Team Driven"/>}
+                                </div>
                                 <p className="truncate">{format(new Date(event.start), 'p')} - {format(new Date(event.end), 'p')}</p>
                                 {event.isPartialLoad && <Badge variant="secondary" className="mt-0.5 text-xs py-0 px-1 h-auto bg-black/20 text-white">Partial</Badge>}
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <div className="h-full w-full"></div> // Empty cell placeholder for consistent height
+                          <div className="h-full w-full"></div>
                         )}
                       </TableCell>
                     );
