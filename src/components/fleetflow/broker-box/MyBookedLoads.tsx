@@ -22,7 +22,7 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-// Removed Tooltip imports
+import { Separator } from '@/components/ui/separator';
 
 interface MyBookedLoadsProps {
   bookedLoads: BrokerLoad[];
@@ -71,7 +71,7 @@ export function MyBookedLoads({
       brokerLoadId: selectedLoadForDocs.id,
       documentName,
       documentType,
-      uploadedBy: selectedLoadForDocs.assignedCarrierId || 'carrierUser1',
+      uploadedBy: selectedLoadForDocs.assignedCarrierId || 'carrierUser1', // Placeholder for actual user
     });
     toast({ title: "Document Recorded", description: `"${documentName}" (${documentType}) has been recorded for load ${selectedLoadForDocs.id}.` });
     setIsUploadDialogOpen(false);
@@ -140,7 +140,6 @@ export function MyBookedLoads({
               <p><strong>Equipment:</strong> {load.equipmentType}</p>
               {truck && <p><strong>Assigned Truck:</strong> {truck.name} ({truck.licensePlate})</p>}
               {driver && <p><strong>Assigned Driver:</strong> {driver.name}</p>}
-              {/* Removed direct display of notes here, as the icon handles it */}
             </CardContent>
             <CardFooter className="border-t pt-3 flex justify-end gap-2">
                 {docsForThisLoad.length > 0 && (
@@ -161,12 +160,23 @@ export function MyBookedLoads({
           if (!isOpen) setSelectedLoadForDocs(null);
           setIsUploadDialogOpen(isOpen);
       }}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Upload Document for Load: {selectedLoadForDocs?.commodity}</DialogTitle>
             <DialogDescription>Record a new document. Actual file upload is simulated.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            {selectedLoadForDocs?.notes && (
+              <div className="mb-4 p-3 border border-yellow-300 bg-yellow-50 rounded-md">
+                <h4 className="text-sm font-semibold text-yellow-700 flex items-center gap-2">
+                  <StickyNote className="h-4 w-4 text-yellow-600" />
+                  Important Load Notes:
+                </h4>
+                <p className="text-xs text-yellow-700 whitespace-pre-wrap mt-1">
+                  {selectedLoadForDocs.notes}
+                </p>
+              </div>
+            )}
             <div>
               <Label htmlFor="documentName">Document Name / Number</Label>
               <Input id="documentName" value={documentName} onChange={(e) => setDocumentName(e.target.value)} className="mt-1 bg-background border-border" placeholder="e.g., BOL #12345, POD Signature"/>
@@ -244,5 +254,3 @@ export function MyBookedLoads({
     </div>
   );
 }
-
-    
