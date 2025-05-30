@@ -212,5 +212,6 @@ export interface AvailableEquipmentPost {
   contactEmail?: string;
   notes?: string;
   status: 'Available' | 'Booked' | 'Expired'; // Simple status for now
+  complianceDocsReady?: boolean; // New field
 }
 

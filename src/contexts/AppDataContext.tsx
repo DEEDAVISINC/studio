@@ -197,7 +197,7 @@ const initialAvailableEquipmentPosts: AvailableEquipmentPost[] = [
     availableFromDate: parseISO('2025-07-19T00:00:00Z'),
     preferredDestinations: 'CA, NV, UT', rateExpectation: '$2.75/mile',
     contactName: 'Mike Ross', contactPhone: '555-0011', contactEmail: 'mike.ross@speedylog.com',
-    notes: 'Experienced driver, clean record.', status: 'Available'
+    notes: 'Experienced driver, clean record.', status: 'Available', complianceDocsReady: true,
   },
   {
     id: 'aep2', carrierId: 'carrier2', postedDate: parseISO('2025-07-19T14:30:00Z'),
@@ -205,7 +205,7 @@ const initialAvailableEquipmentPosts: AvailableEquipmentPost[] = [
     availableFromDate: parseISO('2025-07-20T00:00:00Z'), availableToDate: parseISO('2025-07-25T00:00:00Z'),
     preferredDestinations: 'TX, LA, OK', rateExpectation: 'Market Rate',
     contactName: 'Sarah Connor', contactPhone: '555-0022',
-    notes: 'Oversize load capable.', status: 'Available'
+    notes: 'Oversize load capable.', status: 'Available', complianceDocsReady: false,
   }
 ];
 
@@ -338,7 +338,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       insurancePolicyExpirationDate: updatedCarrierData.insurancePolicyExpirationDate ? new Date(updatedCarrierData.insurancePolicyExpirationDate) : undefined,
       mcs150FormDate: updatedCarrierData.mcs150FormDate ? new Date(updatedCarrierData.mcs150FormDate) : undefined,
       fmcsaLastChecked: updatedCarrierData.fmcsaLastChecked ? new Date(updatedCarrierData.fmcsaLastChecked) : undefined,
-      isBookable: updatedCarrierData.isBookable,
+      isBookable: updatedCarrierData.isBookable, // Ensure this is carried over
     };
     setCarriers(prev => prev.map(c => (c.id === updatedCarrier.id ? updatedCarrier : c)));
 
@@ -399,6 +399,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         isTeamDriven: entry.isTeamDriven || false,
     };
 
+    const truckForEntry = getTruckById(newEntryData.truckId);
+
     // Check for non-partial overlaps
     for (const existingEntry of scheduleEntries) {
         if (existingEntry.truckId === newEntryData.truckId) {
@@ -406,7 +408,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             if (overlap && !newEntryData.isPartialLoad && !existingEntry.isPartialLoad) {
                 toast({
                     title: "Schedule Conflict",
-                    description: `Truck ${getTruckById(newEntryData.truckId)?.name || newEntryData.truckId} already has a non-partial assignment during this time: "${existingEntry.title}".`,
+                    description: `Truck ${truckForEntry?.name || newEntryData.truckId} already has a non-partial assignment during this time: "${existingEntry.title}".`,
                     variant: "destructive",
                     duration: 5000,
                 });
@@ -439,6 +441,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         isPartialLoad: updatedEntry.isPartialLoad || false,
         isTeamDriven: updatedEntry.isTeamDriven || false,
     };
+    const truckForEntry = getTruckById(entryWithDates.truckId);
 
     // Check for non-partial overlaps
     for (const existingEntry of scheduleEntries) {
@@ -447,7 +450,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             if (overlap && !entryWithDates.isPartialLoad && !existingEntry.isPartialLoad) {
                  toast({
                     title: "Schedule Conflict",
-                    description: `Truck ${getTruckById(entryWithDates.truckId)?.name || entryWithDates.truckId} already has a non-partial assignment during this time: "${existingEntry.title}".`,
+                    description: `Truck ${truckForEntry?.name || entryWithDates.truckId} already has a non-partial assignment during this time: "${existingEntry.title}".`,
                     variant: "destructive",
                     duration: 5000,
                 });
@@ -631,17 +634,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         color: 'hsl(260, 80%, 60%)', 
         brokerLoadId: load.id,
         isPartialLoad: false, 
-        isTeamDriven: false, // Default broker loads to not team-driven; can be edited in schedule
+        isTeamDriven: false, 
       });
 
       if (!scheduleResult) {
+          // Revert load status if schedule entry failed
+          setBrokerLoads(prev => prev.map(bl => bl.id === loadId ? {...bl, status: 'Available', assignedCarrierId: undefined, assignedTruckId: undefined, assignedDriverId: undefined } : bl));
           return undefined; 
       }
       setBrokerLoads(prev => prev.map(bl => bl.id === updatedLoadData.id ? updatedLoadData : bl));
       return updatedLoadData;
     }
     return undefined;
-  }, [brokerLoads, trucks, shippers, carriers, addScheduleEntry, toast, updateBrokerLoadStatus]);
+  }, [brokerLoads, trucks, shippers, carriers, addScheduleEntry, toast]); // Removed updateBrokerLoadStatus as it's handled by setBrokerLoads
 
 
    const addLoadDocument = useCallback((doc: Omit<LoadDocument, 'id' | 'uploadDate'>) => {
@@ -663,6 +668,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       status: 'Available',
       availableFromDate: new Date(postData.availableFromDate),
       availableToDate: postData.availableToDate ? new Date(postData.availableToDate) : undefined,
+      complianceDocsReady: postData.complianceDocsReady || false,
     };
     setAvailableEquipmentPosts(prev => [newPost, ...prev.sort((a,b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime())]);
     return newPost;
@@ -673,6 +679,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       ...updatedPost,
       availableFromDate: new Date(updatedPost.availableFromDate),
       availableToDate: updatedPost.availableToDate ? new Date(updatedPost.availableToDate) : undefined,
+      complianceDocsReady: updatedPost.complianceDocsReady || false,
     };
     setAvailableEquipmentPosts(prev => prev.map(p => p.id === postWithDates.id ? postWithDates : p)
                                         .sort((a,b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime()));
@@ -707,11 +714,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addTruck, updateTruck, removeTruck,
     addDriver, updateDriver, removeDriver,
     addCarrier, updateCarrier, removeCarrier, verifyCarrierFmcsa,
-    addScheduleEntry, updateScheduleEntry, removeScheduleEntry,
+    addScheduleEntry, updateScheduleEntry, removeScheduleEntry, // These now include getTruckById in their own deps if necessary
     addDispatchFeeRecord, updateDispatchFeeRecordStatus,
     createInvoiceForCarrier, updateInvoiceStatus,
     addShipper, updateShipper, removeShipper,
-    addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule,
+    addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule, // assignLoad.. includes addScheduleEntry
     addLoadDocument,
     addAvailableEquipmentPost, updateAvailableEquipmentPost, removeAvailableEquipmentPost,
     checkAndSetCarrierBookableStatus,

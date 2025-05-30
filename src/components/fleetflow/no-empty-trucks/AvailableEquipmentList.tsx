@@ -5,7 +5,7 @@ import type { AvailableEquipmentPost } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Edit3, Globe, MapPin, Mail, Phone, Trash2, Truck as TruckIcon, DollarSign } from "lucide-react";
+import { CalendarDays, Edit3, Globe, MapPin, Mail, Phone, Trash2, Truck as TruckIcon, DollarSign, CheckSquare, ShieldCheck } from "lucide-react"; // Added CheckSquare, ShieldCheck
 import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -27,7 +27,7 @@ export function AvailableEquipmentList({ posts, onEdit, onDelete, getCarrierName
   }, []);
 
   const copyContactInfo = (post: AvailableEquipmentPost) => {
-    const fromDateStr = hasMounted ? format(post.availableFromDate, 'PPP') : 'Loading...';
+    const fromDateStr = hasMounted ? format(new Date(post.availableFromDate), 'PPP') : 'Loading...';
     const info = `
 Equipment: ${post.equipmentType}
 Available From: ${fromDateStr}
@@ -36,6 +36,7 @@ Contact: ${post.contactName}
 Phone: ${post.contactPhone}
 ${post.contactEmail ? `Email: ${post.contactEmail}\n` : ''}
 Carrier: ${getCarrierName(post.carrierId)}
+${post.complianceDocsReady ? 'Compliance Documents: Ready\n' : ''}
     `.trim();
     navigator.clipboard.writeText(info)
         .then(() => toast({ title: "Contact Info Copied!" }))
@@ -72,12 +73,18 @@ Carrier: ${getCarrierName(post.carrierId)}
           <CardContent className="space-y-2 text-sm flex-grow">
             <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /> Currently at: {post.currentLocation}</div>
             <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-muted-foreground" /> Available: {hasMounted ? format(post.availableFromDate, 'MMM d, yyyy') : '...'}
-              {post.availableToDate && (hasMounted ? ` to ${format(post.availableToDate, 'MMM d, yyyy')}` : ' ...')}
+              <CalendarDays className="h-4 w-4 text-muted-foreground" /> Available: {hasMounted ? format(new Date(post.availableFromDate), 'MMM d, yyyy') : '...'}
+              {post.availableToDate && (hasMounted ? ` to ${format(new Date(post.availableToDate), 'MMM d, yyyy')}` : ' ...')}
             </div>
             {post.preferredDestinations && <div className="flex items-center gap-2"><Globe className="h-4 w-4 text-muted-foreground" /> Pref. Destinations: {post.preferredDestinations}</div>}
             {post.rateExpectation && <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-muted-foreground" /> Rate: {post.rateExpectation}</div>}
             
+            {post.complianceDocsReady && (
+                <div className="flex items-center gap-2 text-xs text-green-600 pt-1">
+                    <ShieldCheck className="h-3.5 w-3.5" /> Compliance Docs Ready
+                </div>
+            )}
+
             <div className="pt-2 mt-2 border-t border-border">
                 <p className="font-medium text-xs text-muted-foreground mb-1">Contact for this equipment:</p>
                 <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> {post.contactName} - {post.contactPhone}</div>
@@ -117,4 +124,3 @@ Carrier: ${getCarrierName(post.carrierId)}
     </div>
   );
 }
-

@@ -19,11 +19,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, XCircle } from "lucide-react"; // Added XCircle
+import { CalendarIcon, CheckSquare, FileText, XCircle } from "lucide-react"; // Added CheckSquare, FileText, XCircle
 import type { AvailableEquipmentPost, Carrier } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox'; // Added Checkbox
+import { Separator } from '@/components/ui/separator'; // Added Separator
 
 const equipmentPostSchema = z.object({
   carrierId: z.string().min(1, "Carrier is required."),
@@ -38,6 +40,7 @@ const equipmentPostSchema = z.object({
   contactEmail: z.string().email("Invalid email address.").optional().or(z.literal("")),
   notes: z.string().optional(),
   status: z.enum(['Available', 'Booked', 'Expired']).optional(),
+  complianceDocsReady: z.boolean().optional().default(false), // Added new field
 }).refine(data => !data.availableToDate || data.availableToDate >= data.availableFromDate, {
   message: "Available 'To Date' cannot be before 'From Date'.",
   path: ["availableToDate"],
@@ -72,6 +75,7 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
       contactEmail: '',
       notes: '',
       status: 'Available',
+      complianceDocsReady: false, // Default for new field
     }
   });
   
@@ -92,6 +96,7 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
         ...postToEdit,
         availableFromDate: typeof postToEdit.availableFromDate === 'string' ? parseISO(postToEdit.availableFromDate) : postToEdit.availableFromDate,
         availableToDate: postToEdit.availableToDate ? (typeof postToEdit.availableToDate === 'string' ? parseISO(postToEdit.availableToDate) : postToEdit.availableToDate) : null,
+        complianceDocsReady: postToEdit.complianceDocsReady || false,
       });
       const carrier = carriers.find(c => c.id === postToEdit.carrierId);
       setSelectedCarrierIsBookable(carrier?.isBookable ?? false);
@@ -100,7 +105,8 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
         carrierId: '', equipmentType: '', currentLocation: '',
         availableFromDate: new Date(), availableToDate: null,
         preferredDestinations: '', rateExpectation: '',
-        contactName: '', contactPhone: '', contactEmail: '', notes: '', status: 'Available'
+        contactName: '', contactPhone: '', contactEmail: '', notes: '', status: 'Available',
+        complianceDocsReady: false,
       });
       setSelectedCarrierIsBookable(true); // Reset for new post
     }
@@ -122,7 +128,7 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
       onSave({ ...postToEdit, ...submissionData });
       toast({ title: "Posting Updated", description: `Equipment posting for ${data.equipmentType} updated.` });
     } else {
-      const { status, ...newPostData } = submissionData;
+      const { status, ...newPostData } = submissionData; // Status is defaulted by context for new posts
       onSave(newPostData as Omit<AvailableEquipmentPost, 'id' | 'postedDate' | 'status'>);
       toast({ title: "Equipment Posted", description: `${data.equipmentType} available for hire has been posted.` });
     }
@@ -236,8 +242,8 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
             </div>
           </div>
           
-          <hr className="my-3 border-border"/>
-          <h3 className="text-sm font-medium text-muted-foreground">Contact for this Posting</h3>
+          <Separator className="my-4"/>
+          <h3 className="text-sm font-medium text-foreground -mt-1">Contact for this Posting</h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
              <div>
@@ -261,6 +267,36 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
             <Label htmlFor="notes">Additional Notes (Optional)</Label>
             <Textarea id="notes" {...form.register("notes")} className="mt-1 bg-background border-border" rows={2} placeholder="e.g., Team drivers, specific capabilities"/>
           </div>
+
+          <Separator className="my-4" />
+            <div className="space-y-2 -mt-1">
+                <h3 className="text-sm font-medium text-foreground flex items-center">
+                    <FileText className="h-4 w-4 mr-2 text-primary" />
+                    Compliance Readiness
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                    Having your W9, Operating Authority, Certificate of Insurance (COI), and Notice of Assignment (NOA) readily available can expedite load acceptance with brokers and shippers.
+                </p>
+                <div className="flex items-center space-x-2 pt-1">
+                    <Controller
+                        name="complianceDocsReady"
+                        control={form.control}
+                        render={({ field }) => (
+                            <Checkbox
+                                id="complianceDocsReady"
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                            />
+                        )}
+                    />
+                    <Label htmlFor="complianceDocsReady" className="text-sm font-normal text-foreground">
+                        All standard compliance documents (W9, Authority, COI, NOA) are up-to-date and ready.
+                    </Label>
+                </div>
+                {form.formState.errors.complianceDocsReady && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.complianceDocsReady.message}</p>}
+            </div>
+
+
            {postToEdit && (
             <div>
                 <Label htmlFor="status">Status</Label>
@@ -294,4 +330,3 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
     </Dialog>
   );
 }
-
