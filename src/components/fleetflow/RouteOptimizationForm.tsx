@@ -1,5 +1,6 @@
+
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Added useEffect
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
 import * as z from "zod";
@@ -13,10 +14,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { suggestOptimalRoutes, type SuggestOptimalRoutesInput, type SuggestOptimalRoutesOutput } from "@/ai/flows/suggest-optimal-routes";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarIcon, Loader2, Wand2 } from "lucide-react";
+import { CalendarIcon, Loader2, Wand2, MapIcon } from "lucide-react"; // Added MapIcon
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { PRIORITIES, type Priority } from "@/lib/types";
+import { MapPreview } from "./MapPreview"; // Import the new MapPreview component
 
 
 // Zod schema based on SuggestOptimalRoutesInput from AI flow
@@ -40,7 +42,13 @@ export function RouteOptimizationForm() {
   const [optimizationResult, setOptimizationResult] = useState<SuggestOptimalRoutesOutput | null>(null);
   const [selectedDeadlineDate, setSelectedDeadlineDate] = useState<Date | undefined>(new Date());
   const [deadlineTime, setDeadlineTime] = useState<string>(format(new Date(), "HH:mm"));
+  const [mapVisible, setMapVisible] = useState(false);
+  const [apiKey, setApiKey] = useState<string | undefined>(undefined);
 
+  useEffect(() => {
+    // Ensure this only runs on the client
+    setApiKey(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
+  }, []);
 
   const form = useForm<RouteOptimizationFormData>({
     resolver: zodResolver(routeOptimizationSchema),
@@ -70,14 +78,15 @@ export function RouteOptimizationForm() {
   const onSubmit = async (data: RouteOptimizationFormData) => {
     setIsLoading(true);
     setOptimizationResult(null);
+    setMapVisible(false); // Hide map initially on new submission
     try {
-      // Ensure deliveryDeadline is correctly formatted before sending
       const formattedData: SuggestOptimalRoutesInput = {
         ...data,
-        deliveryDeadline: data.deliveryDeadline // Already formatted by handleDateAndTimeChange effect
+        deliveryDeadline: data.deliveryDeadline
       };
       const result = await suggestOptimalRoutes(formattedData);
       setOptimizationResult(result);
+      setMapVisible(true); // Show map after getting result
       toast({
         title: "Optimization Suggestion Ready",
         description: "AI has generated a route suggestion.",
@@ -241,6 +250,40 @@ export function RouteOptimizationForm() {
               <h4 className="font-semibold text-foreground">Reasoning:</h4>
               <p className="text-muted-foreground whitespace-pre-wrap">{optimizationResult.reasoning}</p>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {mapVisible && optimizationResult && apiKey && (
+        <Card className="mt-6 bg-background shadow-md">
+          <CardHeader>
+            <CardTitle className="text-xl text-accent flex items-center">
+              <MapIcon className="mr-2 h-6 w-6" /> Route Visualization
+            </CardTitle>
+            <CardDescription>Visual representation of the route from your input.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MapPreview
+              apiKey={apiKey}
+              origin={form.getValues("currentLocation")}
+              destination={form.getValues("destination")}
+            />
+          </CardContent>
+        </Card>
+      )}
+      {mapVisible && !apiKey && (
+         <Card className="mt-6 bg-background shadow-md">
+          <CardHeader>
+            <CardTitle className="text-xl text-destructive flex items-center">
+              <MapIcon className="mr-2 h-6 w-6" /> Route Visualization Unavailable
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+             <div className="p-4 border-2 border-dashed border-destructive/50 rounded-lg text-center bg-destructive/10 text-destructive">
+                <MapPinOff className="mx-auto h-10 w-10 mb-2" />
+                <p className="font-semibold">Google Maps API Key Missing</p>
+                <p className="text-sm">Please set up the `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` environment variable to display the map.</p>
+              </div>
           </CardContent>
         </Card>
       )}
