@@ -2,7 +2,7 @@
 "use client";
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus } from '@/lib/types';
+import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus, ScheduleType } from '@/lib/types';
 import { addDays, parseISO, addYears, startOfWeek, isPast, endOfDay } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 
@@ -179,14 +179,14 @@ const initialBrokerLoads: BrokerLoad[] = [
         originAddress: '123 Commerce St, Anytown, USA', destinationAddress: '789 Market Ave, Otherville, USA',
         pickupDate: parseISO('2025-07-20T10:00:00Z'), deliveryDate: parseISO('2025-07-21T17:00:00Z'),
         commodity: 'General Electronics', weight: 22000, equipmentType: '53ft Dry Van', offeredRate: 1800,
-        status: 'Available', notes: 'Team driving preferred for quick delivery.'
+        status: 'Available', notes: 'Team driving preferred for quick delivery. Fragile items.'
     },
     {
         id: 'bload2', shipperId: 'shipper2', postedByBrokerId: 'brokerUser1', postedDate: parseISO('2025-07-16T11:00:00Z'),
         originAddress: '456 Farm Rd, Countryside, USA', destinationAddress: '321 Distribution Way, Bigcity, USA',
         pickupDate: parseISO('2025-07-22T08:00:00Z'), deliveryDate: parseISO('2025-07-22T14:00:00Z'),
         commodity: 'Fresh Strawberries', weight: 18000, equipmentType: 'Reefer (-10C)', offeredRate: 2200,
-        status: 'Available', notes: 'Temperature must be monitored.'
+        status: 'Available', notes: 'Temperature must be monitored. Deliver to Dock 7.'
     }
 ];
 
@@ -600,14 +600,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
   
   const assignLoadToCarrierAndCreateSchedule = useCallback((loadId: string, carrierId: string, truckId: string, driverId?: string): BrokerLoad | undefined => {
-    const load = brokerLoads.find(bl => bl.id === loadId);
-    const truck = trucks.find(t => t.id === truckId && t.carrierId === carrierId);
-    const currentShipper = load ? shippers.find(s => s.id === load.shipperId) : undefined;
+    const load = getBrokerLoadById(loadId); // Use getter
+    const truck = getTruckById(truckId);    // Use getter
+    const currentCarrier = getCarrierById(carrierId); // Use getter
+    const currentShipper = load ? getShipperById(load.shipperId) : undefined; // Use getter
 
-    if (load && truck && load.status === 'Available') {
-      const carrier = carriers.find(c => c.id === carrierId);
-      if (!carrier || !carrier.isBookable) {
-        toast({ title: "Assignment Failed", description: `${carrier?.name || 'Carrier'} is currently not bookable due to overdue payments.`, variant: "destructive"});
+    if (load && truck && truck.carrierId === carrierId && load.status === 'Available') {
+      if (!currentCarrier || !currentCarrier.isBookable) {
+        toast({ title: "Assignment Failed", description: `${currentCarrier?.name || 'Carrier'} is currently not bookable due to overdue payments.`, variant: "destructive"});
         return undefined;
       }
 
@@ -620,6 +620,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         confirmationNumber: load.confirmationNumber || `CONF-${Date.now().toString().slice(-6)}`
       };
       
+      const scheduleNotes = [
+        `Broker Load ID: ${load.id}.`,
+        `Shipper: ${currentShipper?.name || 'N/A'}.`,
+        `Confirmation: ${updatedLoadData.confirmationNumber}.`
+      ];
+      if (load.notes) {
+        scheduleNotes.push(`Broker Notes: ${load.notes}`);
+      }
+
       const scheduleResult = addScheduleEntry({
         truckId: truckId,
         driverId: driverId,
@@ -629,8 +638,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         origin: load.originAddress,
         destination: load.destinationAddress,
         loadValue: load.offeredRate,
-        notes: `Broker Load ID: ${load.id}. Shipper: ${currentShipper?.name || 'N/A'}. Confirmation: ${updatedLoadData.confirmationNumber}`,
-        scheduleType: 'Delivery', 
+        notes: scheduleNotes.join('\n'),
+        scheduleType: 'Delivery' as ScheduleType, 
         color: 'hsl(260, 80%, 60%)', 
         brokerLoadId: load.id,
         isPartialLoad: false, 
@@ -638,15 +647,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       });
 
       if (!scheduleResult) {
-          // Revert load status if schedule entry failed
           setBrokerLoads(prev => prev.map(bl => bl.id === loadId ? {...bl, status: 'Available', assignedCarrierId: undefined, assignedTruckId: undefined, assignedDriverId: undefined } : bl));
           return undefined; 
       }
-      setBrokerLoads(prev => prev.map(bl => bl.id === updatedLoadData.id ? updatedLoadData : bl));
+      updateBrokerLoad(updatedLoadData); // Use existing updateBrokerLoad
       return updatedLoadData;
     }
     return undefined;
-  }, [brokerLoads, trucks, shippers, carriers, addScheduleEntry, toast]); // Removed updateBrokerLoadStatus as it's handled by setBrokerLoads
+  }, [getBrokerLoadById, getTruckById, getCarrierById, getShipperById, addScheduleEntry, updateBrokerLoad, toast]);
 
 
    const addLoadDocument = useCallback((doc: Omit<LoadDocument, 'id' | 'uploadDate'>) => {
@@ -714,11 +722,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addTruck, updateTruck, removeTruck,
     addDriver, updateDriver, removeDriver,
     addCarrier, updateCarrier, removeCarrier, verifyCarrierFmcsa,
-    addScheduleEntry, updateScheduleEntry, removeScheduleEntry, // These now include getTruckById in their own deps if necessary
+    addScheduleEntry, updateScheduleEntry, removeScheduleEntry, 
     addDispatchFeeRecord, updateDispatchFeeRecordStatus,
     createInvoiceForCarrier, updateInvoiceStatus,
     addShipper, updateShipper, removeShipper,
-    addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule, // assignLoad.. includes addScheduleEntry
+    addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule, 
     addLoadDocument,
     addAvailableEquipmentPost, updateAvailableEquipmentPost, removeAvailableEquipmentPost,
     checkAndSetCarrierBookableStatus,
@@ -738,3 +746,5 @@ export function useAppData() {
   }
   return context;
 }
+
+    
