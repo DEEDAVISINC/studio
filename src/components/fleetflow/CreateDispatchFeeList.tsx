@@ -103,7 +103,7 @@ export function CreateDispatchFeeList({
                       onClick={() => handleCreateFeeRecord(entry)}
                       className="bg-accent hover:bg-accent/90 text-accent-foreground"
                     >
-                      <PlusCircle className="mr-2 h-4 w-4" /> Create 10% Fee Record
+                      <PlusCircle className="mr-2 h-4 w-4" /> Calculate Fee
                     </Button>
                   ) : (
                     <Badge variant="outline">N/A</Badge>
