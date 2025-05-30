@@ -22,6 +22,8 @@ interface AvailableBrokerLoadsProps {
   getShipperById: (id: string) => Shipper | undefined;
 }
 
+const UNASSIGNED_DRIVER_BROKER_BOX_VALUE = "__UNASSIGNED_DRIVER_BB__";
+
 export function AvailableBrokerLoads({
   brokerLoads,
   carriers,
@@ -34,7 +36,7 @@ export function AvailableBrokerLoads({
   const [selectedLoadToAccept, setSelectedLoadToAccept] = useState<BrokerLoad | null>(null);
   const [selectedCarrierId, setSelectedCarrierId] = useState<string>('');
   const [selectedTruckId, setSelectedTruckId] = useState<string>('');
-  const [selectedDriverId, setSelectedDriverId] = useState<string>(''); // Optional
+  const [selectedDriverId, setSelectedDriverId] = useState<string>(UNASSIGNED_DRIVER_BROKER_BOX_VALUE); // Default to unassigned
 
   const availableTrucksForSelectedCarrier = trucks.filter(t => t.carrierId === selectedCarrierId && t.maintenanceStatus === 'Good');
   const availableDriversForSelectedCarrier = drivers.filter(d => {
@@ -56,13 +58,15 @@ export function AvailableBrokerLoads({
       return;
     }
 
-    const acceptedLoad = onAcceptLoad(selectedLoadToAccept.id, selectedCarrierId, selectedTruckId, selectedDriverId || undefined);
+    const driverToAssign = selectedDriverId === UNASSIGNED_DRIVER_BROKER_BOX_VALUE ? undefined : selectedDriverId;
+
+    const acceptedLoad = onAcceptLoad(selectedLoadToAccept.id, selectedCarrierId, selectedTruckId, driverToAssign);
     if (acceptedLoad) {
         toast({ title: "Load Accepted!", description: `Load ${acceptedLoad.commodity} assigned to ${selectedCarrierObject?.name}. A schedule entry has been created.` });
         setSelectedLoadToAccept(null); // Close dialog
         setSelectedCarrierId('');
         setSelectedTruckId('');
-        setSelectedDriverId('');
+        setSelectedDriverId(UNASSIGNED_DRIVER_BROKER_BOX_VALUE);
     } else {
         // If acceptedLoad is undefined, it means assignment failed.
         // AppDataContext.addScheduleEntry would have shown a specific conflict toast.
@@ -140,7 +144,7 @@ Load ID: ${load.id}
                     setSelectedLoadToAccept(null);
                     setSelectedCarrierId('');
                     setSelectedTruckId('');
-                    setSelectedDriverId('');
+                    setSelectedDriverId(UNASSIGNED_DRIVER_BROKER_BOX_VALUE);
                 } else {
                     setSelectedLoadToAccept(load);
                 }
@@ -198,7 +202,7 @@ Load ID: ${load.id}
                                 <SelectValue placeholder={availableDriversForSelectedCarrier.length > 0 ? "Select available driver" : "No drivers available"} />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">Unassigned</SelectItem>
+                                <SelectItem value={UNASSIGNED_DRIVER_BROKER_BOX_VALUE}>Unassigned</SelectItem>
                                 {availableDriversForSelectedCarrier.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                             </SelectContent>
                             </Select>
@@ -226,6 +230,5 @@ Load ID: ${load.id}
     </div>
   );
 }
-
 
     
