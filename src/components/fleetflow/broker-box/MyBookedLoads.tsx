@@ -122,6 +122,7 @@ export function MyBookedLoads({
               <p><strong>Equipment:</strong> {load.equipmentType}</p>
               {truck && <p><strong>Assigned Truck:</strong> {truck.name} ({truck.licensePlate})</p>}
               {driver && <p><strong>Assigned Driver:</strong> {driver.name}</p>}
+              {load.notes && <p className="text-xs text-muted-foreground mt-2"><strong>Notes:</strong> {load.notes}</p>}
             </CardContent>
             <CardFooter className="border-t pt-3 flex justify-end gap-2">
                 {docsForThisLoad.length > 0 && (
