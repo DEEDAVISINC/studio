@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose, // Added DialogClose for nested dialog
+  DialogClose, 
   DialogTrigger
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -19,16 +19,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter as UiTableFooter } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { Printer, Send, CheckCircle, XCircle, DollarSign, PlusCircle, Trash2 } from "lucide-react"; 
+import { Printer, Send, CheckCircle, XCircle, DollarSign, PlusCircle, Trash2, ThumbsUp, ThumbsDown } from "lucide-react"; 
 import { useToast } from "@/hooks/use-toast";
-import { useAppData } from '@/contexts/AppDataContext'; // To call addManualLineItemToInvoice
+import { useAppData } from '@/contexts/AppDataContext'; 
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface ViewInvoiceDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   invoice: Invoice;
   carrier?: Carrier;
-  feeRecords: DispatchFeeRecord[]; // These are only the dispatch fee records, not manual items
+  feeRecords: DispatchFeeRecord[]; 
   getScheduleEntryById: (scheduleEntryId: string) => ScheduleEntry | undefined;
   onUpdateInvoiceStatus: (invoiceId: string, newStatus: Invoice['status']) => void;
 }
@@ -38,11 +40,11 @@ export function ViewInvoiceDialog({
   onOpenChange,
   invoice,
   carrier,
-  feeRecords, // original dispatch fee records
+  feeRecords, 
   getScheduleEntryById,
   onUpdateInvoiceStatus,
 }: ViewInvoiceDialogProps) {
-  const { addManualLineItemToInvoice, removeManualLineItemFromInvoice } = useAppData();
+  const { addManualLineItemToInvoice, removeManualLineItemFromInvoice, approveManualLineItem, rejectManualLineItem } = useAppData();
   const { toast } = useToast();
   const [isAdjustmentDialogOpen, setIsAdjustmentDialogOpen] = useState(false);
   const [adjustmentDescription, setAdjustmentDescription] = useState('');
@@ -56,7 +58,7 @@ export function ViewInvoiceDialog({
     if (printableContent) {
       const printWindow = window.open('', '', 'height=800,width=1000');
       printWindow?.document.write('<html><head><title>Invoice</title>');
-      printWindow?.document.write('<style>body { margin: 20px; font-family: sans-serif; color: #333; } table { width: 100%; border-collapse: collapse; margin-bottom: 15px; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 0.9rem; } th { background-color: #f9f9f9; } .header-section, .totals-section { margin-bottom: 20px; } .text-right { text-align: right; } .text-lg { font-size: 1.125rem; } .font-semibold { font-weight: 600; } .font-bold { font-weight: bold; } .grid { display: grid; } .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr));} .gap-4 { gap: 1rem; } .mt-4 { margin-top: 1rem; } .mb-1 { margin-bottom: 0.25rem; } .mb-2 { margin-bottom: 0.5rem; } .py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; } .italic { font-style: italic; } .text-xs { font-size: 0.75rem; } .text-muted-foreground { color: #777; } </style>');
+      printWindow?.document.write('<style>body { margin: 20px; font-family: sans-serif; color: #333; } table { width: 100%; border-collapse: collapse; margin-bottom: 15px; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 0.9rem; } th { background-color: #f9f9f9; } .header-section, .totals-section { margin-bottom: 20px; } .text-right { text-align: right; } .text-lg { font-size: 1.125rem; } .font-semibold { font-weight: 600; } .font-bold { font-weight: bold; } .grid { display: grid; } .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr));} .gap-4 { gap: 1rem; } .mt-4 { margin-top: 1rem; } .mb-1 { margin-bottom: 0.25rem; } .mb-2 { margin-bottom: 0.5rem; } .py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; } .italic { font-style: italic; } .text-xs { font-size: 0.75rem; } .text-muted-foreground { color: #777; } .line-through { text-decoration: line-through; } .opacity-70 { opacity: 0.7; } </style>');
       printWindow?.document.write('</head><body>');
       printWindow?.document.write(printableContent.innerHTML);
       printWindow?.document.write('</body></html>');
@@ -66,27 +68,27 @@ export function ViewInvoiceDialog({
     }
   };
   
-  const getStatusColor = (status: Invoice['status']) => {
+  const getStatusColor = (status: Invoice['status'] | ManualLineItem['status']) => {
     switch (status) {
-      case 'Paid': return 'text-green-600';
+      case 'Paid': case 'Approved': return 'text-green-600';
       case 'Sent': return 'text-blue-600';
-      case 'Draft': return 'text-yellow-600';
-      case 'Void': return 'text-red-600';
+      case 'Draft': case 'Pending Approval': return 'text-yellow-600';
+      case 'Void': case 'Rejected': return 'text-red-600 line-through opacity-70';
       default: return 'text-muted-foreground';
     }
   };
 
   const handleAddAdjustment = () => {
-    if (!adjustmentDescription || adjustmentAmount === '' || adjustmentAmount <= 0) {
-      toast({ title: "Invalid Adjustment", description: "Please provide a description and a positive amount.", variant: "destructive" });
+    if (!adjustmentDescription || adjustmentAmount === '' || Number(adjustmentAmount) === 0) {
+      toast({ title: "Invalid Adjustment", description: "Please provide a description and a non-zero amount.", variant: "destructive" });
       return;
     }
     addManualLineItemToInvoice(invoice.id, {
       description: adjustmentDescription,
-      amount: Number(adjustmentAmount),
+      amount: Math.abs(Number(adjustmentAmount)), // Store as positive, type defines charge/credit
       type: adjustmentType,
     });
-    toast({ title: "Adjustment Added", description: `${adjustmentType === 'charge' ? 'Charge' : 'Credit'} of $${adjustmentAmount} added.` });
+    toast({ title: "Adjustment Added", description: `Adjustment "${adjustmentDescription}" added and pending approval.` });
     setIsAdjustmentDialogOpen(false);
     setAdjustmentDescription('');
     setAdjustmentAmount('');
@@ -97,11 +99,23 @@ export function ViewInvoiceDialog({
     removeManualLineItemFromInvoice(invoice.id, lineItemId);
     toast({ title: "Adjustment Removed" });
   };
+
+  const handleApproveAdjustment = (lineItemId: string) => {
+    approveManualLineItem(invoice.id, lineItemId);
+    toast({ title: "Adjustment Approved" });
+  };
+
+  const handleRejectAdjustment = (lineItemId: string) => {
+    rejectManualLineItem(invoice.id, lineItemId);
+    toast({ title: "Adjustment Rejected" });
+  };
   
   const canModifyInvoice = invoice.status === 'Sent' || invoice.status === 'Draft';
 
   const dispatchFeesSubtotal = feeRecords.reduce((sum, fee) => sum + fee.feeAmount, 0);
-  const manualAdjustmentsSubtotal = (invoice.manualLineItems || []).reduce((sum, item) => {
+  
+  const approvedManualItems = (invoice.manualLineItems || []).filter(item => item.status === 'Approved');
+  const manualAdjustmentsSubtotal = approvedManualItems.reduce((sum, item) => {
     return sum + (item.type === 'charge' ? item.amount : -item.amount);
   }, 0);
 
@@ -232,22 +246,50 @@ export function ViewInvoiceDialog({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Description</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    {canModifyInvoice && <TableHead className="text-right w-[80px]">Action</TableHead>}
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    {canModifyInvoice && <TableHead className="text-right w-[160px]">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {invoice.manualLineItems.map(item => (
-                    <TableRow key={item.id}>
-                      <TableCell>{item.description} <span className="text-xs italic text-muted-foreground">({item.type})</span></TableCell>
-                      <TableCell className="text-right">
+                    <TableRow key={item.id} className={cn(item.status === 'Rejected' && 'opacity-60')}>
+                      <TableCell className={cn(item.status === 'Rejected' && 'line-through')}>{item.description} <span className="text-xs italic text-muted-foreground">({item.type})</span></TableCell>
+                      <TableCell className={cn("text-right", item.status === 'Rejected' && 'line-through')}>
                         {(item.type === 'charge' ? item.amount : -item.amount).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                       </TableCell>
+                      <TableCell>
+                        <Badge variant={item.status === 'Approved' ? 'default' : item.status === 'Pending Approval' ? 'secondary' : 'destructive'} 
+                               className={cn(
+                                   item.status === 'Approved' && 'bg-green-100 text-green-700 border-green-300',
+                                   item.status === 'Pending Approval' && 'bg-yellow-100 text-yellow-700 border-yellow-300',
+                                   item.status === 'Rejected' && 'bg-red-100 text-red-700 border-red-300'
+                               )}>
+                            {item.status}
+                        </Badge>
+                      </TableCell>
                       {canModifyInvoice && (
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" className="text-destructive h-7 w-7" onClick={() => handleRemoveAdjustment(item.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <TableCell className="text-right space-x-1">
+                          {item.status === 'Pending Approval' && (
+                            <>
+                              <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700 h-7 w-7" onClick={() => handleApproveAdjustment(item.id)} title="Approve">
+                                <ThumbsUp className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700 h-7 w-7" onClick={() => handleRejectAdjustment(item.id)} title="Reject">
+                                <ThumbsDown className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                          {(item.status === 'Pending Approval' || item.status === 'Rejected') && (
+                            <Button variant="ghost" size="icon" className="text-destructive h-7 w-7" onClick={() => handleRemoveAdjustment(item.id)} title="Remove">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                           {item.status === 'Approved' && ( // Allow removal of approved items if invoice is still modifiable
+                                <Button variant="ghost" size="icon" className="text-destructive h-7 w-7" onClick={() => handleRemoveAdjustment(item.id)} title="Remove Approved Item">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                            )}
                         </TableCell>
                       )}
                     </TableRow>
@@ -255,9 +297,9 @@ export function ViewInvoiceDialog({
                 </TableBody>
                  <UiTableFooter>
                     <TableRow>
-                        <TableCell className="text-right font-semibold">{canModifyInvoice ? '' : 'Manual Adjustments Subtotal:'}</TableCell>
+                        <TableCell colSpan={canModifyInvoice ? 3 : 2} className="text-right font-semibold">Approved Manual Adjustments Subtotal:</TableCell>
                         <TableCell className="text-right font-semibold">{manualAdjustmentsSubtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
-                        {canModifyInvoice && <TableCell></TableCell>}
+                         {canModifyInvoice && <TableCell></TableCell>}
                     </TableRow>
                 </UiTableFooter>
               </Table>

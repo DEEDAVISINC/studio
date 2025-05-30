@@ -134,8 +134,9 @@ export interface DispatchFeeRecord {
 export interface ManualLineItem {
   id: string;
   description: string;
-  amount: number; // positive for charge, negative for credit (or use type to determine)
+  amount: number; 
   type: 'charge' | 'credit';
+  status: 'Pending Approval' | 'Approved' | 'Rejected';
 }
 
 export interface Invoice {

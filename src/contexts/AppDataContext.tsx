@@ -40,8 +40,10 @@ interface AppDataContextType {
   
   createInvoiceForCarrier: (carrierId: string, feeRecordIds: string[]) => Invoice | undefined;
   updateInvoiceStatus: (invoiceId: string, newStatus: Invoice['status']) => void;
-  addManualLineItemToInvoice: (invoiceId: string, itemData: Omit<ManualLineItem, 'id'>) => void;
+  addManualLineItemToInvoice: (invoiceId: string, itemData: Omit<ManualLineItem, 'id' | 'status'>) => void;
   removeManualLineItemFromInvoice: (invoiceId: string, lineItemId: string) => void;
+  approveManualLineItem: (invoiceId: string, lineItemId: string) => void;
+  rejectManualLineItem: (invoiceId: string, lineItemId: string) => void;
 
 
   addShipper: (shipper: Omit<Shipper, 'id'>) => void;
@@ -234,7 +236,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const getShipperById = useCallback((shipperId: string) => shippers.find(s => s.id === shipperId), [shippers]);
   const getBrokerLoadById = useCallback((loadId: string) => brokerLoads.find(bl => bl.id === loadId), [brokerLoads]);
   const getAvailableEquipmentPostById = useCallback((postId: string) => availableEquipmentPosts.find(p => p.id === postId), [availableEquipmentPosts]);
-
 
   const checkAndSetCarrierBookableStatus = useCallback((carrierId: string) => {
     setCarriers(prevCarriers => {
@@ -511,7 +512,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
     if (manualItems) {
       manualItems.forEach(item => {
-        total += item.type === 'charge' ? item.amount : -item.amount;
+        if (item.status === 'Approved') { // Only include approved items in total
+            total += item.type === 'charge' ? item.amount : -item.amount;
+        }
       });
     }
     return total;
@@ -524,7 +527,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     if (recordsToInvoice.length === 0) return undefined;
 
-    const totalDispatchFees = recordsToInvoice.reduce((sum, rec) => sum + rec.feeAmount, 0);
+    
     const newInvoiceId = `inv${Date.now()}`;
     const currentDate = new Date(); 
     
@@ -535,6 +538,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const mondayOfThisWeek = startOfWeek(currentDate, { weekStartsOn: 1 }); 
     const dueDateIsWednesday = addDays(mondayOfThisWeek, 2);
 
+    const initialTotalAmount = calculateInvoiceTotal(recordsToInvoice.map(rec => rec.id), []); // No manual items initially
+
     const newInvoice: Invoice = {
       id: newInvoiceId,
       invoiceNumber,
@@ -542,8 +547,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       invoiceDate: currentDate,
       dueDate: dueDateIsWednesday, 
       dispatchFeeRecordIds: recordsToInvoice.map(rec => rec.id),
-      manualLineItems: [], // Initialize with empty manual items
-      totalAmount: totalDispatchFees, // Initial total is sum of fees
+      manualLineItems: [], 
+      totalAmount: initialTotalAmount, 
       status: 'Sent', 
     };
 
@@ -552,7 +557,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     checkAndSetCarrierBookableStatus(carrierId); 
     
     return newInvoice;
-  }, [dispatchFeeRecords, invoices, updateDispatchFeeRecordStatus, checkAndSetCarrierBookableStatus]);
+  }, [dispatchFeeRecords, invoices, updateDispatchFeeRecordStatus, checkAndSetCarrierBookableStatus, calculateInvoiceTotal]);
 
   const updateInvoiceStatus = useCallback((invoiceId: string, newStatus: Invoice['status']) => {
     let carrierIdToUpdate: string | undefined = undefined;
@@ -568,12 +573,29 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }, [checkAndSetCarrierBookableStatus]);
 
-  const addManualLineItemToInvoice = useCallback((invoiceId: string, itemData: Omit<ManualLineItem, 'id'>) => {
+  const addManualLineItemToInvoice = useCallback((invoiceId: string, itemData: Omit<ManualLineItem, 'id' | 'status'>) => {
     setInvoices(prevInvoices => 
       prevInvoices.map(inv => {
         if (inv.id === invoiceId) {
-          const newLineItem: ManualLineItem = { ...itemData, id: `mli-${Date.now()}` };
+          const newLineItem: ManualLineItem = { 
+            ...itemData, 
+            id: `mli-${Date.now()}`,
+            status: 'Pending Approval' // New items are pending approval
+          };
           const updatedManualLineItems = [...(inv.manualLineItems || []), newLineItem];
+          // Total amount is NOT updated here, will be updated upon approval
+          return { ...inv, manualLineItems: updatedManualLineItems };
+        }
+        return inv;
+      })
+    );
+  }, []);
+
+  const removeManualLineItemFromInvoice = useCallback((invoiceId: string, lineItemId: string) => {
+    setInvoices(prevInvoices =>
+      prevInvoices.map(inv => {
+        if (inv.id === invoiceId) {
+          const updatedManualLineItems = (inv.manualLineItems || []).filter(item => item.id !== lineItemId);
           const newTotalAmount = calculateInvoiceTotal(inv.dispatchFeeRecordIds, updatedManualLineItems);
           return { ...inv, manualLineItems: updatedManualLineItems, totalAmount: newTotalAmount };
         }
@@ -582,11 +604,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     );
   }, [calculateInvoiceTotal]);
 
-  const removeManualLineItemFromInvoice = useCallback((invoiceId: string, lineItemId: string) => {
+  const approveManualLineItem = useCallback((invoiceId: string, lineItemId: string) => {
     setInvoices(prevInvoices =>
       prevInvoices.map(inv => {
         if (inv.id === invoiceId) {
-          const updatedManualLineItems = (inv.manualLineItems || []).filter(item => item.id !== lineItemId);
+          const updatedManualLineItems = (inv.manualLineItems || []).map(item =>
+            item.id === lineItemId ? { ...item, status: 'Approved' } : item
+          );
+          const newTotalAmount = calculateInvoiceTotal(inv.dispatchFeeRecordIds, updatedManualLineItems);
+          return { ...inv, manualLineItems: updatedManualLineItems, totalAmount: newTotalAmount };
+        }
+        return inv;
+      })
+    );
+  }, [calculateInvoiceTotal]);
+
+  const rejectManualLineItem = useCallback((invoiceId: string, lineItemId: string) => {
+    setInvoices(prevInvoices =>
+      prevInvoices.map(inv => {
+        if (inv.id === invoiceId) {
+          const updatedManualLineItems = (inv.manualLineItems || []).map(item =>
+            item.id === lineItemId ? { ...item, status: 'Rejected' } : item
+          );
+          // Total amount doesn't change on rejection if it wasn't approved before
+          // but recalculating ensures consistency if the item was somehow approved then rejected.
           const newTotalAmount = calculateInvoiceTotal(inv.dispatchFeeRecordIds, updatedManualLineItems);
           return { ...inv, manualLineItems: updatedManualLineItems, totalAmount: newTotalAmount };
         }
@@ -756,7 +797,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addCarrier, updateCarrier, removeCarrier, verifyCarrierFmcsa,
     addScheduleEntry, updateScheduleEntry, removeScheduleEntry,
     addDispatchFeeRecord, updateDispatchFeeRecordStatus,
-    createInvoiceForCarrier, updateInvoiceStatus, addManualLineItemToInvoice, removeManualLineItemFromInvoice,
+    createInvoiceForCarrier, updateInvoiceStatus, 
+    addManualLineItemToInvoice, removeManualLineItemFromInvoice, approveManualLineItem, rejectManualLineItem,
     addShipper, updateShipper, removeShipper,
     addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule,
     addLoadDocument,
@@ -772,7 +814,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addCarrier, updateCarrier, removeCarrier, verifyCarrierFmcsa,
     addScheduleEntry, updateScheduleEntry, removeScheduleEntry, 
     addDispatchFeeRecord, updateDispatchFeeRecordStatus,
-    createInvoiceForCarrier, updateInvoiceStatus, addManualLineItemToInvoice, removeManualLineItemFromInvoice,
+    createInvoiceForCarrier, updateInvoiceStatus, 
+    addManualLineItemToInvoice, removeManualLineItemFromInvoice, approveManualLineItem, rejectManualLineItem,
     addShipper, updateShipper, removeShipper,
     addBrokerLoad, updateBrokerLoad, updateBrokerLoadStatus, assignLoadToCarrierAndCreateSchedule, 
     addLoadDocument,
