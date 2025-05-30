@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import type { BrokerLoad, Shipper, Carrier, Truck, Driver, BrokerLoadStatus } from "@/lib/types";
 import { BROKER_LOAD_STATUSES } from '@/lib/types';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Edit3, Copy, Filter, MoreVertical, StickyNote } from "lucide-react"; // Added StickyNote
+import { PlusCircle, Edit3, Copy, Filter, MoreVertical, StickyNote } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
@@ -13,6 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger, // Added DialogTrigger
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,8 +30,7 @@ import { format, parseISO } from "date-fns";
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
+// Removed Tooltip imports as Dialog will replace it for notes
 
 const brokerLoadSchema = z.object({
   shipperId: z.string().min(1, "Shipper is required."),
@@ -44,7 +44,7 @@ const brokerLoadSchema = z.object({
   equipmentType: z.string().min(3, "Equipment type is required."),
   offeredRate: z.coerce.number().positive("Offered rate must be a positive number."),
   notes: z.string().optional(),
-  status: z.enum(BROKER_LOAD_STATUSES).optional(), // Status updated separately by system/carrier
+  status: z.enum(BROKER_LOAD_STATUSES).optional(),
 }).refine(data => data.deliveryDate >= data.pickupDate, {
     message: "Delivery date cannot be before pickup date.",
     path: ["deliveryDate"],
@@ -59,15 +59,16 @@ interface ManageBrokerLoadsProps {
   trucks: Truck[];
   drivers: Driver[];
   onAddBrokerLoad: (load: Omit<BrokerLoad, 'id' | 'postedDate' | 'status' | 'postedByBrokerId'>) => BrokerLoad;
-  onUpdateBrokerLoad: (load: BrokerLoad) => void; // For full edits by broker
+  onUpdateBrokerLoad: (load: BrokerLoad) => void;
   getShipperById: (id: string) => Shipper | undefined;
 }
 
 export function ManageBrokerLoads({ brokerLoads, shippers, onAddBrokerLoad, onUpdateBrokerLoad, getShipperById }: ManageBrokerLoadsProps) {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingLoad, setEditingLoad] = useState<BrokerLoad | null>(null);
   const [statusFilter, setStatusFilter] = useState<BrokerLoadStatus | 'All'>('All');
   const { toast } = useToast();
+  const [viewingNotesLoad, setViewingNotesLoad] = useState<BrokerLoad | null>(null);
 
   const form = useForm<BrokerLoadFormData>({
     resolver: zodResolver(brokerLoadSchema),
@@ -85,25 +86,25 @@ export function ManageBrokerLoads({ brokerLoads, shippers, onAddBrokerLoad, onUp
   });
   
   useEffect(() => {
-    if (isDialogOpen && editingLoad) {
+    if (isFormDialogOpen && editingLoad) {
         form.reset({
             ...editingLoad,
             pickupDate: typeof editingLoad.pickupDate === 'string' ? parseISO(editingLoad.pickupDate) : editingLoad.pickupDate,
             deliveryDate: typeof editingLoad.deliveryDate === 'string' ? parseISO(editingLoad.deliveryDate) : editingLoad.deliveryDate,
         });
-    } else if (isDialogOpen && !editingLoad) {
+    } else if (isFormDialogOpen && !editingLoad) {
         form.reset({
             shipperId: '', originAddress: '', destinationAddress: '',
             pickupDate: new Date(), deliveryDate: new Date(new Date().setDate(new Date().getDate() + 1)),
             commodity: '', equipmentType: '', offeredRate: 0, notes: '',
         });
     }
-  }, [isDialogOpen, editingLoad, form]);
+  }, [isFormDialogOpen, editingLoad, form]);
 
 
-  const handleOpenDialog = (load?: BrokerLoad) => {
+  const handleOpenFormDialog = (load?: BrokerLoad) => {
     setEditingLoad(load || null);
-    setIsDialogOpen(true);
+    setIsFormDialogOpen(true);
   };
 
   const onSubmit = (data: BrokerLoadFormData) => {
@@ -121,7 +122,7 @@ export function ManageBrokerLoads({ brokerLoads, shippers, onAddBrokerLoad, onUp
             onAddBrokerLoad(data);
             toast({ title: "Load Posted", description: `New load for ${data.commodity} has been posted.` });
         }
-        setIsDialogOpen(false);
+        setIsFormDialogOpen(false);
         setEditingLoad(null);
     } catch (error) {
         console.error("Error submitting load: ", error);
@@ -165,7 +166,6 @@ Load ID: ${load.id}
 
 
   return (
-    <TooltipProvider>
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
@@ -182,7 +182,7 @@ Load ID: ${load.id}
                 </SelectContent>
             </Select>
         </div>
-        <Button onClick={() => handleOpenDialog()} className="bg-primary hover:bg-primary/90">
+        <Button onClick={() => handleOpenFormDialog()} className="bg-primary hover:bg-primary/90">
           <PlusCircle className="mr-2 h-4 w-4" /> Post New Load
         </Button>
       </div>
@@ -211,14 +211,15 @@ Load ID: ${load.id}
                       <div className="flex items-center gap-2">
                         {load.commodity}
                         {load.notes && (
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <StickyNote className="h-4 w-4 text-yellow-500" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="max-w-xs whitespace-pre-wrap break-words">{load.notes}</p>
-                            </TooltipContent>
-                          </Tooltip>
+                          <Dialog open={viewingNotesLoad?.id === load.id} onOpenChange={(isOpen) => {
+                            if (!isOpen) setViewingNotesLoad(null);
+                          }}>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-5 w-5 p-0 text-yellow-500 hover:text-yellow-600" onClick={() => setViewingNotesLoad(load)}>
+                                <StickyNote className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                          </Dialog>
                         )}
                       </div>
                     </TableCell>
@@ -239,13 +240,12 @@ Load ID: ${load.id}
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleOpenDialog(load)}>
+                                <DropdownMenuItem onClick={() => handleOpenFormDialog(load)}>
                                     <Edit3 className="mr-2 h-4 w-4" /> Edit Load
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => copyLoadInfoToClipboard(load)}>
                                     <Copy className="mr-2 h-4 w-4" /> Copy Info
                                 </DropdownMenuItem>
-                                {/* More actions like "Cancel Load", "Mark Delivered" could be added here based on status */}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
@@ -257,7 +257,27 @@ Load ID: ${load.id}
         </div>
       )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      {/* Dialog for Viewing Notes */}
+      {viewingNotesLoad && viewingNotesLoad.notes && (
+        <Dialog open={!!viewingNotesLoad} onOpenChange={(isOpen) => { if (!isOpen) setViewingNotesLoad(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Notes for: {viewingNotesLoad.commodity}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                {viewingNotesLoad.notes}
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewingNotesLoad(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Dialog for Add/Edit Load Form */}
+      <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
         <DialogContent className="sm:max-w-2xl bg-card">
           <DialogHeader>
             <DialogTitle className="text-foreground">{editingLoad ? "Edit Load Posting" : "Post New Load"}</DialogTitle>
@@ -380,7 +400,7 @@ Load ID: ${load.id}
             </div>
             
             <DialogFooter className="pt-4 sticky bottom-0 bg-card pb-1">
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setIsFormDialogOpen(false)}>Cancel</Button>
               <Button type="submit" className="bg-primary hover:bg-primary/90">
                 {editingLoad ? "Save Changes" : "Post Load"}
               </Button>
@@ -389,7 +409,6 @@ Load ID: ${load.id}
         </DialogContent>
       </Dialog>
     </div>
-    </TooltipProvider>
   );
 }
 

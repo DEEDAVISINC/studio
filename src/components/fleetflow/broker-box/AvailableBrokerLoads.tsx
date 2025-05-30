@@ -4,27 +4,34 @@ import { useState } from 'react';
 import type { BrokerLoad, Shipper, Carrier, Truck, Driver } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-import { ThumbsUp, MapPin, CalendarDays, TruckIcon as EqIcon, DollarSign, ClipboardList, UserCheck, AlertTriangle, XCircle, StickyNote } from "lucide-react"; // Added StickyNote
+import { ThumbsUp, MapPin, CalendarDays, TruckIcon as EqIcon, DollarSign, ClipboardList, UserCheck, AlertTriangle, XCircle, StickyNote } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+// Removed Tooltip imports
 
+const UNASSIGNED_DRIVER_BROKER_BOX_VALUE = "__UNASSIGNED_DRIVER_BB__";
 
 interface AvailableBrokerLoadsProps {
-  brokerLoads: BrokerLoad[]; // Should already be filtered for 'Available' status
-  carriers: Carrier[]; // All carriers in the system
-  trucks: Truck[]; // All trucks in the system
-  drivers: Driver[]; // All drivers in the system
+  brokerLoads: BrokerLoad[];
+  carriers: Carrier[];
+  trucks: Truck[];
+  drivers: Driver[];
   onAcceptLoad: (loadId: string, carrierId: string, truckId: string, driverId?: string) => BrokerLoad | undefined;
   getShipperById: (id: string) => Shipper | undefined;
 }
-
-const UNASSIGNED_DRIVER_BROKER_BOX_VALUE = "__UNASSIGNED_DRIVER_BB__";
 
 export function AvailableBrokerLoads({
   brokerLoads,
@@ -39,6 +46,8 @@ export function AvailableBrokerLoads({
   const [selectedCarrierId, setSelectedCarrierId] = useState<string>('');
   const [selectedTruckId, setSelectedTruckId] = useState<string>('');
   const [selectedDriverId, setSelectedDriverId] = useState<string>(UNASSIGNED_DRIVER_BROKER_BOX_VALUE); 
+  const [viewingNotesLoad, setViewingNotesLoad] = useState<BrokerLoad | null>(null);
+
 
   const availableTrucksForSelectedCarrier = trucks.filter(t => t.carrierId === selectedCarrierId && t.maintenanceStatus === 'Good');
   const availableDriversForSelectedCarrier = drivers.filter(d => {
@@ -112,7 +121,6 @@ Load ID: ${load.id}
   }
 
   return (
-    <TooltipProvider>
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {brokerLoads.map(load => {
         const shipper = getShipperById(load.shipperId);
@@ -123,14 +131,13 @@ Load ID: ${load.id}
                 <div className="flex items-center gap-2">
                   <CardTitle className="text-lg text-primary">{load.commodity}</CardTitle>
                    {load.notes && (
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <StickyNote className="h-4 w-4 text-yellow-500" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-xs whitespace-pre-wrap break-words">{load.notes}</p>
-                        </TooltipContent>
-                      </Tooltip>
+                     <Dialog open={viewingNotesLoad?.id === load.id && viewingNotesLoad.notes === load.notes} onOpenChange={(isOpen) => { if(!isOpen) setViewingNotesLoad(null)}}>
+                       <DialogTrigger asChild>
+                         <Button variant="ghost" size="icon" className="h-5 w-5 p-0 text-yellow-500 hover:text-yellow-600" onClick={() => setViewingNotesLoad(load)}>
+                            <StickyNote className="h-4 w-4" />
+                         </Button>
+                       </DialogTrigger>
+                     </Dialog>
                     )}
                 </div>
                 <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white">Available</Badge>
@@ -236,8 +243,25 @@ Load ID: ${load.id}
           </Card>
         );
       })}
+      {/* Dialog for Viewing Notes */}
+      {viewingNotesLoad && viewingNotesLoad.notes && (
+        <Dialog open={!!viewingNotesLoad} onOpenChange={(isOpen) => { if (!isOpen) setViewingNotesLoad(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Notes for: {viewingNotesLoad.commodity}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                {viewingNotesLoad.notes}
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewingNotesLoad(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
-    </TooltipProvider>
   );
 }
 

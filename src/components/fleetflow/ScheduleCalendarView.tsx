@@ -16,10 +16,18 @@ import {
   addWeeks, 
   subWeeks 
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Users, StickyNote } from "lucide-react"; // Added StickyNote
+import { ChevronLeft, ChevronRight, Users, StickyNote } from "lucide-react";
 import { Badge } from '@/components/ui/badge'; 
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+// Removed Tooltip imports
 
 interface ScheduleCalendarViewProps {
   events: ScheduleEntry[];
@@ -30,6 +38,7 @@ interface ScheduleCalendarViewProps {
 
 export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: ScheduleCalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewingNotesEvent, setViewingNotesEvent] = useState<ScheduleEntry | null>(null);
 
   const weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1; // Monday
 
@@ -62,7 +71,7 @@ export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: 
   const goToNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
 
   return (
-    <TooltipProvider>
+    <>
     <Card className="shadow-lg h-full flex flex-col">
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -117,7 +126,11 @@ export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: 
                             {truckDayEvents.map(event => (
                               <div
                                 key={event.id}
-                                onClick={() => onEventClick(event)}
+                                onClick={(e) => {
+                                  // Prevent dialog from opening if note icon is clicked
+                                  if ((e.target as HTMLElement).closest('.note-icon-trigger')) return;
+                                  onEventClick(event);
+                                }}
                                 className="p-1.5 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity text-white"
                                 style={{ backgroundColor: event.color || 'hsl(var(--primary))' }}
                                 title={`Driver: ${getDriverName(event.driverId)}\n${event.origin} to ${event.destination}\n${format(new Date(event.start), 'p')} - ${format(new Date(event.end), 'p')}${event.notes ? `\nNotes: ${event.notes}` : ''}${event.isTeamDriven ? '\n(Team Driven)' : ''}${event.isPartialLoad ? '\n(Partial Load)' : ''}`}
@@ -126,14 +139,13 @@ export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: 
                                   <p className="font-semibold truncate flex items-center gap-1">
                                     {event.title}
                                     {event.notes && (
-                                      <Tooltip>
-                                        <TooltipTrigger onClick={(e) => e.stopPropagation()} asChild>
-                                          <StickyNote className="h-3 w-3 text-yellow-300 shrink-0" />
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top" className="max-w-xs whitespace-pre-wrap break-words">
-                                          <p>{event.notes}</p>
-                                        </TooltipContent>
-                                      </Tooltip>
+                                      <Dialog open={viewingNotesEvent?.id === event.id && viewingNotesEvent.notes === event.notes} onOpenChange={(isOpen) => { if(!isOpen) setViewingNotesEvent(null); }}>
+                                        <DialogTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="note-icon-trigger h-4 w-4 p-0 text-yellow-300 hover:text-yellow-400 shrink-0" onClick={(e) => { e.stopPropagation(); setViewingNotesEvent(event); }}>
+                                            <StickyNote className="h-3 w-3" />
+                                          </Button>
+                                        </DialogTrigger>
+                                      </Dialog>
                                     )}
                                   </p>
                                   <div className="flex items-center shrink-0 ml-1">
@@ -158,7 +170,26 @@ export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: 
         </ScrollArea>
       </CardContent>
     </Card>
-    </TooltipProvider>
+
+    {/* Dialog for Viewing Event Notes */}
+    {viewingNotesEvent && viewingNotesEvent.notes && (
+      <Dialog open={!!viewingNotesEvent} onOpenChange={(isOpen) => { if (!isOpen) setViewingNotesEvent(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Notes for: {viewingNotesEvent.title}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+              {viewingNotesEvent.notes}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingNotesEvent(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   );
 }
 

@@ -5,21 +5,27 @@ import type { BrokerLoad, LoadDocument, Shipper, LoadDocumentType, Truck, Driver
 import { LOAD_DOCUMENT_TYPES } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileUp, PackageCheck, ListOrdered, Eye, AlertTriangle, StickyNote } from "lucide-react"; // Added StickyNote
+import { FileUp, PackageCheck, ListOrdered, Eye, AlertTriangle, StickyNote } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
+// Removed Tooltip imports
 
 interface MyBookedLoadsProps {
-  bookedLoads: BrokerLoad[]; // Loads assigned to the current carrier
+  bookedLoads: BrokerLoad[];
   loadDocuments: LoadDocument[];
   onAddLoadDocument: (doc: Omit<LoadDocument, 'id' | 'uploadDate'>) => void;
   getShipperById: (id: string) => Shipper | undefined;
@@ -41,6 +47,7 @@ export function MyBookedLoads({
   const [documentType, setDocumentType] = useState<LoadDocumentType | ''>('');
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isViewDocsDialogOpen, setIsViewDocsDialogOpen] = useState(false);
+  const [viewingNotesLoad, setViewingNotesLoad] = useState<BrokerLoad | null>(null);
 
 
   const handleOpenUploadDialog = (load: BrokerLoad) => {
@@ -60,17 +67,15 @@ export function MyBookedLoads({
       toast({ title: "Missing Information", description: "Please provide document name and type.", variant: "destructive" });
       return;
     }
-    // Simulate document upload
     onAddLoadDocument({
       brokerLoadId: selectedLoadForDocs.id,
       documentName,
       documentType,
-      // In a real app, uploadedBy would be the current (carrier) user's ID
       uploadedBy: selectedLoadForDocs.assignedCarrierId || 'carrierUser1',
     });
     toast({ title: "Document Recorded", description: `"${documentName}" (${documentType}) has been recorded for load ${selectedLoadForDocs.id}.` });
     setIsUploadDialogOpen(false);
-    setSelectedLoadForDocs(null);
+    setSelectedLoadForDocs(null); // Clear selection after successful upload
   };
   
   const getStatusColor = (status: BrokerLoad['status']) => {
@@ -98,7 +103,6 @@ export function MyBookedLoads({
   }
 
   return (
-    <TooltipProvider>
     <div className="space-y-6">
       {bookedLoads.map(load => {
         const shipper = getShipperById(load.shipperId);
@@ -113,14 +117,13 @@ export function MyBookedLoads({
                  <div className="flex items-center gap-2">
                     <CardTitle className="text-lg">{load.commodity}</CardTitle>
                     {load.notes && (
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <StickyNote className="h-4 w-4 text-yellow-500" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-xs whitespace-pre-wrap break-words">{load.notes}</p>
-                        </TooltipContent>
-                      </Tooltip>
+                       <Dialog open={viewingNotesLoad?.id === load.id && viewingNotesLoad.notes === load.notes} onOpenChange={(isOpen) => { if(!isOpen) setViewingNotesLoad(null)}}>
+                         <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 p-0 text-yellow-500 hover:text-yellow-600" onClick={() => setViewingNotesLoad(load)}>
+                                <StickyNote className="h-4 w-4" />
+                            </Button>
+                         </DialogTrigger>
+                       </Dialog>
                     )}
                 </div>
                 <Badge className={getStatusColor(load.status) + " text-white"}>{load.status}</Badge>
@@ -137,7 +140,7 @@ export function MyBookedLoads({
               <p><strong>Equipment:</strong> {load.equipmentType}</p>
               {truck && <p><strong>Assigned Truck:</strong> {truck.name} ({truck.licensePlate})</p>}
               {driver && <p><strong>Assigned Driver:</strong> {driver.name}</p>}
-              {load.notes && <p className="text-xs text-muted-foreground pt-1"><strong>Broker Notes:</strong> {load.notes}</p>}
+              {/* Removed direct display of notes here, as the icon handles it */}
             </CardContent>
             <CardFooter className="border-t pt-3 flex justify-end gap-2">
                 {docsForThisLoad.length > 0 && (
@@ -219,8 +222,26 @@ export function MyBookedLoads({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog for Viewing Notes */}
+      {viewingNotesLoad && viewingNotesLoad.notes && (
+        <Dialog open={!!viewingNotesLoad} onOpenChange={(isOpen) => { if (!isOpen) setViewingNotesLoad(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Notes for: {viewingNotesLoad.commodity}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                {viewingNotesLoad.notes}
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewingNotesLoad(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
-    </TooltipProvider>
   );
 }
 
