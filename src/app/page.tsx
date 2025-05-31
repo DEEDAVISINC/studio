@@ -1,22 +1,14 @@
 
-// Remove "use client" - this will now be a Server Component by default
-
-// No imports needed for this simplified version
-// import { useEffect } from 'react';
-// import { useRouter } from 'next/navigation';
-// import { Loader2 } from 'lucide-react';
+import { redirect } from 'next/navigation';
 
 export default function HomePage() {
-  // The redirect logic is removed for this test.
-  // If this page loads, we know Next.js can serve the root.
-  // We can then re-evaluate the redirect strategy.
+  // This will perform a server-side redirect to the overview page.
+  // Ensure that '/dashboard/overview' is a valid and working route.
+  redirect('/dashboard/overview');
 
-  return (
-    <div style={{ padding: '20px', border: '2px solid red', textAlign: 'center' }}>
-      <h1>Root Page (/src/app/page.tsx)</h1>
-      <p>If you see this, Next.js is able to render the basic root page.</p>
-      <p>The automatic redirect to /dashboard/overview has been temporarily disabled for this test.</p>
-      <p>Please try navigating to <a href="/dashboard/overview" style={{color: 'blue', textDecoration: 'underline'}}>/dashboard/overview</a> manually.</p>
-    </div>
-  );
+  // Note: Content below this redirect call will not be rendered
+  // because the redirect interrupts the rendering process.
+  // You can return null or some minimal JSX if your linter requires a return statement,
+  // but it's effectively unreachable.
+  return null;
 }
