@@ -1,14 +1,10 @@
 
-import { redirect } from 'next/navigation';
-
 export default function HomePage() {
-  // This will perform a server-side redirect to the overview page.
-  // Ensure that '/dashboard/overview' is a valid and working route.
-  redirect('/dashboard/overview');
-
-  // Note: Content below this redirect call will not be rendered
-  // because the redirect interrupts the rendering process.
-  // You can return null or some minimal JSX if your linter requires a return statement,
-  // but it's effectively unreachable.
-  return null;
+  return (
+    <div style={{ border: '2px solid red', padding: '20px', margin: '20px' }}>
+      <h1>Minimal Root Page Test</h1>
+      <p>If you see this message, then Next.js is correctly finding and rendering /src/app/page.tsx for the root URL.</p>
+      <p>The 404 error would then be related to redirects or other configurations.</p>
+    </div>
+  );
 }
