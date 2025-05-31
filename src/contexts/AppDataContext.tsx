@@ -383,27 +383,54 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const verifyCarrierFmcsa = useCallback(async (carrierId: string): Promise<FmcsaAuthorityStatus> => {
-    return new Promise((resolve) => {
-      setCarriers(prev => prev.map(c => 
-        c.id === carrierId ? { ...c, fmcsaAuthorityStatus: 'Pending Verification' } : c
-      ));
+    const carrier = carriers.find(c => c.id === carrierId);
+    if (!carrier) {
+      toast({ title: "Error", description: "Carrier not found.", variant: "destructive" });
+      return 'Verification Failed';
+    }
 
-      setTimeout(() => {
-        const randomOutcome = Math.random();
-        let status: FmcsaAuthorityStatus;
-        if (randomOutcome < 0.7) { 
-          status = Math.random() < 0.9 ? 'Verified Active' : 'Verified Inactive'; 
-        } else {
-          status = 'Verification Failed';
-        }
-        
-        setCarriers(prev => prev.map(c => 
-          c.id === carrierId ? { ...c, fmcsaAuthorityStatus: status, fmcsaLastChecked: new Date() } : c
-        ));
-        resolve(status);
-      }, 1500); 
-    });
-  }, []);
+    setCarriers(prev => prev.map(c => 
+      c.id === carrierId ? { ...c, fmcsaAuthorityStatus: 'Pending Verification' } : c
+    ));
+
+    try {
+      const queryParams = new URLSearchParams();
+      if (carrier.usDotNumber) queryParams.append('usDotNumber', carrier.usDotNumber);
+      else if (carrier.mcNumber) queryParams.append('mcNumber', carrier.mcNumber);
+      else {
+         toast({ title: "Verification Skipped", description: `Carrier ${carrier.name} has no MC or USDOT number.`, variant: "default" });
+         setCarriers(prev => prev.map(c => c.id === carrierId ? { ...c, fmcsaAuthorityStatus: 'Not Verified', fmcsaLastChecked: new Date() } : c));
+         return 'Not Verified';
+      }
+      
+      const response = await fetch(`/api/fmcsa-verify?${queryParams.toString()}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `FMCSA API request failed with status ${response.status}`);
+      }
+      
+      const result = await response.json();
+      const newStatus: FmcsaAuthorityStatus = result.status || 'Verification Failed';
+
+      setCarriers(prev => prev.map(c => 
+        c.id === carrierId ? { ...c, fmcsaAuthorityStatus: newStatus, fmcsaLastChecked: new Date() } : c
+      ));
+      return newStatus;
+
+    } catch (error: any) {
+      console.error("Error verifying FMCSA status:", error);
+      toast({
+        title: "FMCSA Verification Error",
+        description: error.message || "Could not complete FMCSA verification.",
+        variant: "destructive",
+      });
+      setCarriers(prev => prev.map(c => 
+        c.id === carrierId ? { ...c, fmcsaAuthorityStatus: 'Verification Failed', fmcsaLastChecked: new Date() } : c
+      ));
+      return 'Verification Failed';
+    }
+  }, [carriers, toast]);
   
   // Schedule CRUD
   const addScheduleEntry = useCallback((entry: Omit<ScheduleEntry, 'id'>): ScheduleEntry | null => {
