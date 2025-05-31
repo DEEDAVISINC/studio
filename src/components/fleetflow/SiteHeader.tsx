@@ -23,9 +23,8 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-card px-4 sm:px-6 shadow-sm">
-      <Link href="/dashboard/overview" className="flex items-center gap-2 text-lg font-semibold md:text-base">
+      <Link href="/dashboard/overview" className="flex items-center" aria-label="Dashboard Overview">
         <TruckIcon className="h-8 w-8 text-primary" />
-        <span className="text-xl font-bold text-foreground">BLUE SEMI TRUCK</span>
       </Link>
       <div className="ml-auto flex items-center gap-4">
         {/* Placeholder for future elements like search or notifications */}
@@ -34,7 +33,7 @@ export function SiteHeader() {
             <Button variant="ghost" size="icon" className="rounded-full">
               <Avatar>
                 <AvatarImage src="https://placehold.co/40x40.png" alt="User Avatar" data-ai-hint="user avatar" />
-                <AvatarFallback>BST</AvatarFallback> {/* Updated Fallback */}
+                <AvatarFallback>BST</AvatarFallback> 
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
