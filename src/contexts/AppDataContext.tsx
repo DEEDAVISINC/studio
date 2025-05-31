@@ -382,7 +382,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setCarrierDocuments(prev => prev.filter(doc => doc.carrierId !== carrierId));
   }, []);
 
-  const verifyCarrierFmcsa = useCallback(async (carrierId: string): Promise<FmcsaAuthorityStatus> => {
+ const verifyCarrierFmcsa = useCallback(async (carrierId: string): Promise<FmcsaAuthorityStatus> => {
     const carrier = carriers.find(c => c.id === carrierId);
     if (!carrier) {
       toast({ title: "Error", description: "Carrier not found.", variant: "destructive" });
@@ -410,12 +410,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         throw new Error(errorData.error || `FMCSA API request failed with status ${response.status}`);
       }
       
-      const result = await response.json();
+      const result = await response.json(); // { status: FmcsaAuthorityStatus, details?: Partial<Carrier>, message?: string }
       const newStatus: FmcsaAuthorityStatus = result.status || 'Verification Failed';
 
-      setCarriers(prev => prev.map(c => 
-        c.id === carrierId ? { ...c, fmcsaAuthorityStatus: newStatus, fmcsaLastChecked: new Date() } : c
-      ));
+      setCarriers(prev => prev.map(c => {
+        if (c.id === carrierId) {
+          // Merge details from API response if they exist
+          const updatedCarrierDetails = result.details ? {
+            ...c,
+            ...result.details, // This will overwrite fields in 'c' with those from 'result.details'
+            fmcsaAuthorityStatus: newStatus,
+            fmcsaLastChecked: new Date(),
+          } : {
+            ...c,
+            fmcsaAuthorityStatus: newStatus,
+            fmcsaLastChecked: new Date(),
+          };
+          return updatedCarrierDetails;
+        }
+        return c;
+      }));
+      toast({
+        title: "FMCSA Verification Update",
+        description: result.message || `Carrier ${carrier.name} status: ${newStatus}.`,
+      });
       return newStatus;
 
     } catch (error: any) {
@@ -959,5 +977,7 @@ export function useAppData() {
   }
   return context;
 }
+
+    
 
     
