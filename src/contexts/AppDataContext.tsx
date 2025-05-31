@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus, ScheduleType, ManualLineItem, CarrierDocument, CarrierDocumentType } from '@/lib/types';
-import { addDays, parseISO, addYears, startOfWeek, isPast, endOfDay } from 'date-fns';
+import { addDays, parseISO, addYears, startOfWeek, isPast, endOfDay, format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 
 interface AppDataContextType {
@@ -705,6 +705,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const load = getBrokerLoadById(loadId); 
     const truck = getTruckById(truckId);    
     const currentCarrier = getCarrierById(carrierId); 
+    const currentDriver = driverId ? getDriverById(driverId) : undefined;
     const currentShipper = load ? getShipperById(load.shipperId) : undefined; 
 
     if (load && truck && truck.carrierId === carrierId && load.status === 'Available') {
@@ -753,10 +754,74 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           return undefined; 
       }
       updateBrokerLoad(updatedLoadData); 
+
+      // Simulate Email Notification to Carrier
+        console.log(`
+        --- SIMULATED EMAIL NOTIFICATION ---
+        To: ${currentCarrier.contactEmail || 'Carrier Contact (No Email)'}
+        From: FleetFlow System <noreply@fleetflow.example.com>
+        Subject: New Load Assignment - Conf #: ${updatedLoadData.confirmationNumber}
+
+        Hello ${currentCarrier.contactPerson || currentCarrier.name},
+
+        This email confirms that your company, ${currentCarrier.name}, has been assigned a new load:
+
+        Load Details:
+        - Commodity: ${load.commodity}
+        - Confirmation #: ${updatedLoadData.confirmationNumber}
+        - Origin: ${load.originAddress}
+        - Destination: ${load.destinationAddress}
+        - Pickup: ${format(new Date(load.pickupDate), 'PPP p')}
+        - Delivery: ${format(new Date(load.deliveryDate), 'PPP p')}
+        - Rate: $${load.offeredRate.toLocaleString()}
+        - Assigned Truck: ${truck.name} (Plate: ${truck.licensePlate})
+        ${currentDriver ? `- Assigned Driver: ${currentDriver.name}` : '- Driver: To be assigned by carrier'}
+        ${load.notes ? `\nBroker Notes: ${load.notes}` : ''}
+
+        Please review the details in your FleetFlow portal.
+
+        Thank you,
+        FleetFlow Dispatch
+        --- END SIMULATED EMAIL ---
+      `);
+
+      // Simulate Email Notification to Driver (if assigned)
+      if (currentDriver && currentDriver.contactEmail) {
+        console.log(`
+        --- SIMULATED EMAIL NOTIFICATION ---
+        To: ${currentDriver.contactEmail}
+        From: FleetFlow System <noreply@fleetflow.example.com>
+        Subject: New Load Assignment - Conf #: ${updatedLoadData.confirmationNumber}
+
+        Hello ${currentDriver.name},
+
+        You have been assigned a new load:
+
+        Load Details:
+        - Commodity: ${load.commodity}
+        - Confirmation #: ${updatedLoadData.confirmationNumber}
+        - Origin: ${load.originAddress}
+        - Destination: ${load.destinationAddress}
+        - Pickup: ${format(new Date(load.pickupDate), 'PPP p')}
+        - Delivery: ${format(new Date(load.deliveryDate), 'PPP p')}
+        - Your Truck: ${truck.name} (Plate: ${truck.licensePlate})
+        ${load.notes ? `\nBroker Notes: ${load.notes}` : ''}
+
+        Please check your schedule in the FleetFlow portal.
+
+        Regards,
+        ${currentCarrier.name} Dispatch
+        --- END SIMULATED EMAIL ---
+        `);
+      } else if (currentDriver && !currentDriver.contactEmail) {
+         console.log(`INFO: Driver ${currentDriver.name} assigned, but no email on file for notification.`);
+      }
+
+
       return updatedLoadData;
     }
     return undefined;
-  }, [getBrokerLoadById, getTruckById, getCarrierById, getShipperById, addScheduleEntry, updateBrokerLoad, toast]);
+  }, [getBrokerLoadById, getTruckById, getCarrierById, getDriverById, getShipperById, addScheduleEntry, updateBrokerLoad, toast]);
 
 
    const addLoadDocument = useCallback((doc: Omit<LoadDocument, 'id' | 'uploadDate'>) => {
@@ -825,7 +890,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addTruck, updateTruck, removeTruck,
     addDriver, updateDriver, removeDriver,
     addCarrier, updateCarrier, removeCarrier, verifyCarrierFmcsa,
-    addScheduleEntry, updateScheduleEntry, removeScheduleEntry,
+    addScheduleEntry, updateScheduleEntry, removeScheduleEntry, 
     addDispatchFeeRecord, updateDispatchFeeRecordStatus,
     createInvoiceForCarrier, updateInvoiceStatus, 
     addManualLineItemToInvoice, removeManualLineItemFromInvoice, approveManualLineItem, rejectManualLineItem,
