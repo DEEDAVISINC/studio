@@ -1,12 +1,10 @@
 
 import type { Metadata } from 'next';
-
-// Removed globals.css import for maximum simplicity
-// import './globals.css';
+import './globals.css'; // Re-adding this
 
 export const metadata: Metadata = {
-  title: 'FleetFlow Root Test Minimal',
-  description: 'Testing Root Layout and Page Rendering - Minimal Version',
+  title: 'FleetFlow - Root Test',
+  description: 'Testing Root Layout and Page Rendering',
 };
 
 export default function RootLayout({
@@ -17,10 +15,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div style={{ border: '5px solid blue', padding: '20px', margin: '20px', backgroundColor: '#e0e0ff' }}>
-          <h1>EXTREMELY MINIMAL Root Layout (layout.tsx)</h1>
+        <div style={{ border: '2px solid blue', padding: '10px', margin: '10px', backgroundColor: '#f0f8ff' }}>
+          <h2>MINIMAL Root Layout (layout.tsx)</h2>
           <p>If you see this, the RootLayout is rendering.</p>
-          <div style={{ border: '5px solid green', padding: '20px', margin: '10px', backgroundColor: '#e0ffe0' }}>
+          <div style={{ border: '2px solid green', padding: '10px', margin: '5px', backgroundColor: '#f0fff0' }}>
             {children}
           </div>
         </div>
