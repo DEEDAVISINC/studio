@@ -1,7 +1,18 @@
+
 {
   "extends": [
     "next/core-web-vitals",
     "next/typescript"
   ],
-  "ignorePatterns": ["fleetflowsub/**"]
+  "ignorePatterns": ["fleetflowsub/**"],
+  "overrides": [
+    {
+      "files": ["fleetflowsub/fleetflowsub/index.js"],
+      "rules": {
+        "@typescript-eslint/no-require-imports": "off",
+        "@typescript-eslint/no-unused-vars": "off", 
+        "@next/next/no-html-link-for-pages": "off"
+      }
+    }
+  ]
 }
