@@ -4,7 +4,7 @@ import { Inter } from 'next/font/google';
 import { cn } from "@/lib/utils";
 // import { AppDataProvider } from '@/contexts/AppDataContext'; // Temporarily removed
 // import { Toaster } from "@/components/ui/toaster"; // Temporarily removed
-import './globals.css';
+// import './globals.css'; // Commented out for debugging
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
