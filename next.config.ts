@@ -19,12 +19,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Temporarily commenting out experimental features for troubleshooting
-  // experimental: {
-  //   allowedDevOrigins: [
-  //       "https://6000-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev"
-  //   ],
-  // },
+  experimental: {
+    allowedDevOrigins: [
+        "https://6000-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev",
+        "https://9003-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev"
+    ],
+  },
 };
 
 export default nextConfig;
