@@ -83,7 +83,7 @@ const calculateMc150DueDate = (carrierMc150FormDate?: Date | string): Date | und
   try {
     const parsedDate = typeof carrierMc150FormDate === 'string' ? parseISO(carrierMc150FormDate) : carrierMc150FormDate;
     return addYears(parsedDate, 2);
-  } catch (_e) {
+  } catch {
     return undefined;
   }
 };
@@ -982,4 +982,5 @@ export function useAppData() {
     
 
     
+
 

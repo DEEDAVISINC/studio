@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, CheckSquare, FileText, XCircle } from "lucide-react"; // Added CheckSquare, FileText, XCircle
+import { CalendarIcon, FileText, XCircle } from "lucide-react"; // Removed CheckSquare
 import type { AvailableEquipmentPost, Carrier } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
@@ -128,7 +128,7 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
       onSave({ ...postToEdit, ...submissionData });
       toast({ title: "Posting Updated", description: `Equipment posting for ${data.equipmentType} updated.` });
     } else {
-      const { status, ...newPostData } = submissionData; // Status is defaulted by context for new posts
+      const { status: _status, ...newPostData } = submissionData; // Status is defaulted by context for new posts
       onSave(newPostData as Omit<AvailableEquipmentPost, 'id' | 'postedDate' | 'status'>);
       toast({ title: "Equipment Posted", description: `${data.equipmentType} available for hire has been posted.` });
     }
