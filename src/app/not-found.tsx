@@ -1,21 +1,38 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+
+// Attempt to force static generation for the not-found page.
+export const dynamic = 'force-static';
 
 export default function NotFound() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center p-6">
-      <AlertTriangle className="h-24 w-24 text-destructive mx-auto mb-6" />
-      <h1 className="text-5xl font-bold tracking-tight text-foreground mb-4">
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      textAlign: 'center',
+      padding: '20px',
+      fontFamily: 'system-ui, sans-serif',
+      backgroundColor: '#f5f5f5', // Fallback for light gray
+      color: '#333333' // Fallback for dark text
+    }}>
+      <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
         404 - Page Not Found
       </h1>
-      <p className="mt-2 text-xl text-muted-foreground max-w-md mx-auto mb-8">
+      <p style={{ fontSize: '1.25rem', marginBottom: '2rem', color: '#71717a' /* Fallback for muted-foreground */ }}>
         Oops! The page you are looking for does not exist or has been moved.
       </p>
-      <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-        <Link href="/">Go Back Home</Link>
-      </Button>
+      <Link href="/" passHref>
+        {/* The Button component uses Tailwind classes which should be processed fine.
+            If issues persist, this could be further simplified to a basic <a> tag.
+        */}
+        <Button size="lg">
+          Go Back Home
+        </Button>
+      </Link>
     </div>
   );
 }
