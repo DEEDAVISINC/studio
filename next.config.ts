@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
+    ignorePatterns: ['fleetflowsub/**'], // Add this line to ignore the functions sub-project
   },
   images: {
     remotePatterns: [
