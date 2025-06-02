@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI agent that suggests optimal routes or scheduling adjustments for trucking fleets.
@@ -97,6 +98,9 @@ const suggestOptimalRoutesFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+        throw new Error("AI failed to generate route suggestions.");
+    }
+    return output;
   }
 );
