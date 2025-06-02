@@ -2,8 +2,8 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { cn } from "@/lib/utils";
-import { AppDataProvider } from '@/contexts/AppDataContext';
-import { Toaster } from "@/components/ui/toaster";
+// import { AppDataProvider } from '@/contexts/AppDataContext'; // Temporarily removed
+// import { Toaster } from "@/components/ui/toaster"; // Temporarily removed
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
@@ -15,7 +15,6 @@ export const metadata: Metadata = {
   },
   description: 'Efficiently manage your trucking fleet, schedules, and operations with FleetFlow.',
   icons: {
-    // TODO: Add actual icon paths if you have them in /public
     // icon: '/favicon.ico',
     // apple: '/apple-touch-icon.png',
   }
@@ -29,10 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={cn("min-h-screen bg-background font-sans antialiased", inter.variable)}>
-        <AppDataProvider>
+        {/* <AppDataProvider> */}
           {children}
-          <Toaster />
-        </AppDataProvider>
+          {/* <Toaster /> */}
+        {/* </AppDataProvider> */}
       </body>
     </html>
   );

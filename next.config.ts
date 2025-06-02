@@ -7,8 +7,8 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   eslint: {
-    ignoreDuringBuilds: true,
-    // Removed ignorePatterns from here as it's not a valid option
+    // NOTE: No ignorePatterns here, as it's not a valid Next.js ESLint config option directly.
+    // Ignoring directories for ESLint should be handled in .eslintrc.json or eslint.config.js
   },
   images: {
     remotePatterns: [
@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
     allowedDevOrigins: [
         "https://6000-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev",
         "https://9003-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev",
-        "https://9004-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev" // Added new origin for port 9004
+        "https://9004-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev"
     ],
   },
 };
