@@ -666,7 +666,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setInvoices(prevInvoices =>
       prevInvoices.map(inv => {
         if (inv.id === invoiceId) {
-          const updatedManualLineItems = (inv.manualLineItems || []).map(item =>
+          const updatedManualLineItems = (inv.manualLineItems || []).map((item): ManualLineItem =>
             item.id === lineItemId ? { ...item, status: 'Approved' } : item
           );
           const newTotalAmount = calculateInvoiceTotal(inv.dispatchFeeRecordIds, updatedManualLineItems);
@@ -681,11 +681,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setInvoices(prevInvoices =>
       prevInvoices.map(inv => {
         if (inv.id === invoiceId) {
-          const updatedManualLineItems = (inv.manualLineItems || []).map(item =>
+          const updatedManualLineItems = (inv.manualLineItems || []).map((item): ManualLineItem =>
             item.id === lineItemId ? { ...item, status: 'Rejected' } : item
           );
-          // Total amount doesn't change on rejection if it wasn't approved before
-          // but recalculating ensures consistency if the item was somehow approved then rejected.
           const newTotalAmount = calculateInvoiceTotal(inv.dispatchFeeRecordIds, updatedManualLineItems);
           return { ...inv, manualLineItems: updatedManualLineItems, totalAmount: newTotalAmount };
         }
