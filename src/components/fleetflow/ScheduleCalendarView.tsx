@@ -27,7 +27,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-// Removed Tooltip imports
 
 interface ScheduleCalendarViewProps {
   events: ScheduleEntry[];
@@ -139,13 +138,9 @@ export function ScheduleCalendarView({ events, onEventClick, trucks, drivers }: 
                                   <p className="font-semibold truncate flex items-center gap-1">
                                     {event.title}
                                     {event.notes && (
-                                      <Dialog open={viewingNotesEvent?.id === event.id && viewingNotesEvent.notes === event.notes} onOpenChange={(isOpen) => { if(!isOpen) setViewingNotesEvent(null); }}>
-                                        <DialogTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="note-icon-trigger h-4 w-4 p-0 text-yellow-300 hover:text-yellow-400 shrink-0" onClick={(e) => { e.stopPropagation(); setViewingNotesEvent(event); }}>
-                                            <StickyNote className="h-3 w-3" />
-                                          </Button>
-                                        </DialogTrigger>
-                                      </Dialog>
+                                      <Button variant="ghost" size="icon" className="note-icon-trigger h-4 w-4 p-0 text-yellow-300 hover:text-yellow-400 shrink-0" onClick={(e) => { e.stopPropagation(); setViewingNotesEvent(event); }}>
+                                        <StickyNote className="h-3 w-3" />
+                                      </Button>
                                     )}
                                   </p>
                                   <div className="flex items-center shrink-0 ml-1">
