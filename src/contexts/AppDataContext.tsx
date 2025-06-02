@@ -2,7 +2,7 @@
 "use client";
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus, ScheduleType, ManualLineItem, CarrierDocument, CarrierDocumentType } from '@/lib/types';
+import type { Truck, Driver, Carrier, ScheduleEntry, DispatchFeeRecord, Invoice, Shipper, BrokerLoad, LoadDocument, BrokerLoadStatus, AvailableEquipmentPost, FmcsaAuthorityStatus, ScheduleType, ManualLineItem, CarrierDocument } from '@/lib/types';
 import { addDays, parseISO, addYears, startOfWeek, isPast, endOfDay, format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 
@@ -83,7 +83,7 @@ const calculateMc150DueDate = (carrierMc150FormDate?: Date | string): Date | und
   try {
     const parsedDate = typeof carrierMc150FormDate === 'string' ? parseISO(carrierMc150FormDate) : carrierMc150FormDate;
     return addYears(parsedDate, 2);
-  } catch (e) {
+  } catch (_e) {
     return undefined;
   }
 };
@@ -260,7 +260,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         );
 
         if (carrierSentInvoices.length > 0) {
-            const today = new Date();
             for (const inv of carrierSentInvoices) {
                 const invoiceDueDateIsWednesday = new Date(inv.dueDate);
                 const endOfDueWednesday = endOfDay(invoiceDueDateIsWednesday); 
@@ -283,7 +282,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     carriers.forEach(carrier => {
         checkAndSetCarrierBookableStatus(carrier.id);
     });
-  }, [invoices, carriers.length, checkAndSetCarrierBookableStatus]);
+  }, [invoices, carriers, checkAndSetCarrierBookableStatus]);
 
 
   // Truck CRUD
@@ -436,11 +435,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       });
       return newStatus;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      let errorMessage = "Could not complete FMCSA verification.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       console.error("Error verifying FMCSA status:", error);
       toast({
         title: "FMCSA Verification Error",
-        description: error.message || "Could not complete FMCSA verification.",
+        description: errorMessage,
         variant: "destructive",
       });
       setCarriers(prev => prev.map(c => 
@@ -979,3 +982,4 @@ export function useAppData() {
     
 
     
+
