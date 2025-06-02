@@ -9,8 +9,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { useAppData } from "@/contexts/AppDataContext";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useCallback } from 'react';
-import { format } from "date-fns";
+import { useState, useCallback, useEffect } from 'react';
+import { format, parseISO, isValid } from "date-fns";
 import { ManageCarrierDocumentsDialog } from "./ManageCarrierDocumentsDialog";
 
 interface CarrierListTableProps {
@@ -24,6 +24,11 @@ export function CarrierListTable({ carriers, onEdit, onDelete }: CarrierListTabl
   const { toast } = useToast();
   const [verifyingCarrierId, setVerifyingCarrierId] = useState<string | null>(null);
   const [managingDocsCarrier, setManagingDocsCarrier] = useState<Carrier | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const handleVerifyFmcsa = useCallback(async (carrier: Carrier) => {
     if (!carrier.mcNumber && !carrier.usDotNumber) {
@@ -93,6 +98,13 @@ Email: ${carrier.contactEmail}
     }
   };
 
+  const formatDateChecked = (dateInput?: Date | string): string => {
+    if (!hasMounted || !dateInput) return '...';
+    const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput;
+    if (!isValid(date)) return 'Invalid Date';
+    return format(date, 'P p');
+  };
+
 
   if (carriers.length === 0) {
     return <p className="text-muted-foreground text-center py-8">No carriers found. Add a new carrier to get started.</p>;
@@ -136,7 +148,7 @@ Email: ${carrier.contactEmail}
                 {getFmcsaStatusBadge(carrier.fmcsaAuthorityStatus)}
                 {carrier.fmcsaLastChecked && (
                     <div className="text-xs text-muted-foreground mt-0.5">
-                        Last: {format(new Date(carrier.fmcsaLastChecked), 'P p')}
+                        Last: {formatDateChecked(carrier.fmcsaLastChecked)}
                     </div>
                 )}
             </TableCell>

@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Trash2, Edit3, Eye, CalendarClock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { format, parseISO, isPast, differenceInDays } from "date-fns";
+import { format, parseISO, isPast, differenceInDays, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState, useEffect } from "react";
@@ -43,9 +43,11 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
     if (!hasMounted || !dateInput) return '...';
     const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput;
     try {
+        if (!isValid(date)) { // Check if date is valid
+            return 'Invalid Date';
+        }
         return format(date, 'MMM d, yyyy');
     } catch (e) {
-        // console.error("Error formatting date:", dateInput, e);
         return 'Invalid Date';
     }
   };
@@ -54,11 +56,13 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
     if (!hasMounted || !dateInput) return 'text-muted-foreground';
     try {
         const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput;
+        if (!isValid(date)) { // Check if date is valid
+            return 'text-muted-foreground';
+        }
         if (isPast(date)) return 'text-destructive font-semibold';
         if (differenceInDays(date, new Date()) < 30) return 'text-yellow-600 font-semibold';
         return 'text-foreground';
     } catch (e) {
-        // console.error("Error processing date for color:", dateInput, e);
         return 'text-muted-foreground';
     }
   };
@@ -96,7 +100,7 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
                      className={cn(
                        truck.maintenanceStatus === 'Good' && 'bg-green-500 hover:bg-green-600 text-white',
                        truck.maintenanceStatus === 'Needs Service' && 'bg-red-500 hover:bg-red-600 text-white',
-                       truck.maintenanceStatus === 'In Service' && 'bg-yellow-500 hover:bg-yellow-600 text-black' // Updated for better visibility
+                       truck.maintenanceStatus === 'In Service' && 'bg-yellow-500 hover:bg-yellow-600 text-black'
                      )}>
                 {truck.maintenanceStatus}
               </Badge>
@@ -105,7 +109,7 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <span className="flex items-center gap-1">
-                            {hasMounted && truck.mc150DueDate && <CalendarClock className="h-3 w-3" />}
+                            {hasMounted && truck.mc150DueDate && isValid(typeof truck.mc150DueDate === 'string' ? parseISO(truck.mc150DueDate) : truck.mc150DueDate) && <CalendarClock className="h-3 w-3" />}
                             {formatDate(truck.mc150DueDate)}
                         </span>
                     </TooltipTrigger>
@@ -116,7 +120,7 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <span className="flex items-center gap-1">
-                             {hasMounted && truck.permitExpiryDate && <CalendarClock className="h-3 w-3" />}
+                             {hasMounted && truck.permitExpiryDate && isValid(typeof truck.permitExpiryDate === 'string' ? parseISO(truck.permitExpiryDate) : truck.permitExpiryDate) && <CalendarClock className="h-3 w-3" />}
                             {formatDate(truck.permitExpiryDate)}
                         </span>
                     </TooltipTrigger>
@@ -127,7 +131,7 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <span className="flex items-center gap-1">
-                            {hasMounted && truck.taxDueDate && <CalendarClock className="h-3 w-3" />}
+                            {hasMounted && truck.taxDueDate && isValid(typeof truck.taxDueDate === 'string' ? parseISO(truck.taxDueDate) : truck.taxDueDate) && <CalendarClock className="h-3 w-3" />}
                             {formatDate(truck.taxDueDate)}
                         </span>
                     </TooltipTrigger>
@@ -144,9 +148,6 @@ export function TruckListTable({ trucks, drivers, carriers, onEdit, onDelete }: 
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {/* <DropdownMenuItem onClick={() => console.log("View truck:", truck)}>
-                      <Eye className="mr-2 h-4 w-4" /> View Details
-                    </DropdownMenuItem> */}
                     <DropdownMenuItem onClick={() => onEdit(truck)}>
                       <Edit3 className="mr-2 h-4 w-4" /> Edit
                     </DropdownMenuItem>
