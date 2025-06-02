@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
-    ignorePatterns: ['fleetflowsub/**'], // Add this line to ignore the functions sub-project
+    // Removed ignorePatterns from here as it's not a valid option
   },
   images: {
     remotePatterns: [
@@ -23,7 +23,8 @@ const nextConfig: NextConfig = {
   experimental: {
     allowedDevOrigins: [
         "https://6000-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev",
-        "https://9003-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev"
+        "https://9003-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev",
+        "https://9004-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev" // Added new origin for port 9004
     ],
   },
 };
