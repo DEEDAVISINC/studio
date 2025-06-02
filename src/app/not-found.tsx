@@ -1,9 +1,7 @@
-
 // src/app/not-found.tsx
 
 // Explicitly mark this page for static generation.
-// This is important for ensuring Next.js can correctly build it,
-// especially if there have been issues with its manifest.
+// This is important for ensuring Next.js can correctly build it.
 export const dynamic = 'force-static';
 
 export default function NotFound() {
@@ -20,7 +18,7 @@ export default function NotFound() {
       color: '#1f2937' // A dark gray text color
     }}>
       <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#ef4444' /* A red color for emphasis */ }}>
-        404 - Page Not Found (Custom)
+        404 - Page Not Found
       </h1>
       <p style={{ fontSize: '1.125rem', marginTop: '0.5rem', color: '#4b5563' /* A medium gray text color */ }}>
         Sorry, the page you are looking for could not be found.
