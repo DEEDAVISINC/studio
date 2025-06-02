@@ -19,13 +19,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, FileText, XCircle } from "lucide-react"; // Removed CheckSquare
+import { CalendarIcon, FileText, XCircle } from "lucide-react"; 
 import type { AvailableEquipmentPost, Carrier } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
 import { cn } from '@/lib/utils';
-import { Checkbox } from '@/components/ui/checkbox'; // Added Checkbox
-import { Separator } from '@/components/ui/separator'; // Added Separator
+import { Checkbox } from '@/components/ui/checkbox'; 
+import { Separator } from '@/components/ui/separator'; 
 
 const equipmentPostSchema = z.object({
   carrierId: z.string().min(1, "Carrier is required."),
@@ -40,7 +40,7 @@ const equipmentPostSchema = z.object({
   contactEmail: z.string().email("Invalid email address.").optional().or(z.literal("")),
   notes: z.string().optional(),
   status: z.enum(['Available', 'Booked', 'Expired']).optional(),
-  complianceDocsReady: z.boolean().optional().default(false), // Added new field
+  complianceDocsReady: z.boolean().optional().default(false), 
 }).refine(data => !data.availableToDate || data.availableToDate >= data.availableFromDate, {
   message: "Available 'To Date' cannot be before 'From Date'.",
   path: ["availableToDate"],
@@ -75,7 +75,7 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
       contactEmail: '',
       notes: '',
       status: 'Available',
-      complianceDocsReady: false, // Default for new field
+      complianceDocsReady: false, 
     }
   });
   
@@ -86,7 +86,7 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
       const carrier = carriers.find(c => c.id === watchedCarrierId);
       setSelectedCarrierIsBookable(carrier?.isBookable ?? false);
     } else {
-      setSelectedCarrierIsBookable(true); // Default to true if no carrier selected
+      setSelectedCarrierIsBookable(true); 
     }
   }, [watchedCarrierId, carriers]);
 
@@ -108,12 +108,12 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
         contactName: '', contactPhone: '', contactEmail: '', notes: '', status: 'Available',
         complianceDocsReady: false,
       });
-      setSelectedCarrierIsBookable(true); // Reset for new post
+      setSelectedCarrierIsBookable(true); 
     }
   }, [isOpen, postToEdit, form, carriers]);
 
   const onSubmit = (data: EquipmentPostFormData) => {
-    if (!selectedCarrierIsBookable) {
+    if (!selectedCarrierIsBookable && !postToEdit) { // For new posts, check bookable status
         toast({ title: "Carrier Unbookable", description: "This carrier cannot post equipment due to overdue payments.", variant: "destructive" });
         return;
     }
@@ -128,8 +128,12 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
       onSave({ ...postToEdit, ...submissionData });
       toast({ title: "Posting Updated", description: `Equipment posting for ${data.equipmentType} updated.` });
     } else {
-      const { status: _status, ...newPostData } = submissionData; // Status is defaulted by context for new posts
-      onSave(newPostData as Omit<AvailableEquipmentPost, 'id' | 'postedDate' | 'status'>);
+      // Create a new object for saving that definitely doesn't have 'status'
+      // to match Omit<AvailableEquipmentPost, 'id' | 'postedDate' | 'status'>
+      const newPostDataForSave = { ...submissionData };
+      delete newPostDataForSave.status; 
+      
+      onSave(newPostDataForSave as Omit<AvailableEquipmentPost, 'id' | 'postedDate' | 'status'>);
       toast({ title: "Equipment Posted", description: `${data.equipmentType} available for hire has been posted.` });
     }
     onOpenChange(false);
@@ -208,7 +212,7 @@ export function PostAvailableEquipmentDialog({ isOpen, onOpenChange, onSave, pos
               )}
             />
             {form.formState.errors.carrierId && <p className="text-xs text-destructive mt-0.5">{form.formState.errors.carrierId.message}</p>}
-             {!selectedCarrierIsBookable && watchedCarrierId && (
+             {!selectedCarrierIsBookable && watchedCarrierId && !postToEdit && ( // Show warning only for new posts if carrier unbookable
                 <p className="text-xs text-destructive mt-1">This carrier cannot post new equipment due to overdue payments.</p>
             )}
           </div>
