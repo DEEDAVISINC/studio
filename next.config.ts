@@ -23,8 +23,7 @@ const nextConfig: NextConfig = {
   experimental: {
     allowedDevOrigins: [
         "https://6000-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev",
-        // Removed 9003 as we are now targeting 9004 primarily
-        "https://9004-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev"
+        "https://9002-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev"
     ],
   },
 };
