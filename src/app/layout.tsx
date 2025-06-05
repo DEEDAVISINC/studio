@@ -1,37 +1,25 @@
 
+// THIS IS /src/app/layout.tsx - VERSION L_SIMPLE_WITH_GLOBALS_3
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import { cn } from "@/lib/utils";
-import { AppDataProvider } from '@/contexts/AppDataContext'; // Restored
-import { Toaster } from "@/components/ui/toaster"; // Restored
-import './globals.css'; // Restored
-
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+import './globals.css'; // Re-enable globals.css
 
 export const metadata: Metadata = {
-  title: {
-    default: 'FleetFlow',
-    template: '%s | FleetFlow',
-  },
-  description: 'Efficiently manage your trucking fleet, schedules, and operations with FleetFlow.',
-  icons: {
-    // icon: '/favicon.ico',
-    // apple: '/apple-touch-icon.png',
-  }
+  title: 'FleetFlow Minimal Layout Test L_SIMPLE_WITH_GLOBALS_3',
+  description: 'Testing root layout L_SIMPLE_WITH_GLOBALS_3',
 };
 
-export default function RootLayout({
+export default function RootLayout_L_SIMPLE_WITH_GLOBALS_3({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={cn("min-h-screen bg-background font-sans antialiased", inter.variable)}>
-        <AppDataProvider>
+    <html lang="en">
+      <body style={{ margin: 0, padding: 0, border: '5px solid blue', backgroundColor: 'lightblue' }}>
+        <div style={{ padding: '20px', border: '3px dashed darkblue' }}>
+          <h2 style={{ color: 'darkblue' }}>ROOT LAYOUT L_SIMPLE_WITH_GLOBALS_3 - ACTIVE</h2>
           {children}
-          <Toaster />
-        </AppDataProvider>
+        </div>
       </body>
     </html>
   );

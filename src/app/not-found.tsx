@@ -1,20 +1,15 @@
 
+// THIS IS /src/app/not-found.tsx - VERSION NF_SIMPLE_4
 import Link from 'next/link';
 
-// THIS IS A SUPER BASIC NOT FOUND PAGE FOR DEBUGGING - VERSION 3
-
-export default function NotFound() {
+export default function NotFound_NF_SIMPLE_4() {
   return (
-    <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-      <h1 style={{ color: 'red', fontSize: '36px', fontWeight: 'bold' }}>
-        NOT FOUND - DEBUG V3
-      </h1>
-      <p style={{ fontSize: '18px' }}>
-        If you see this, the simplified not-found.tsx file IS being used.
-      </p>
+    <div style={{ padding: '50px', textAlign: 'center', border: '5px solid red', backgroundColor: 'pink' }}>
+      <h1 style={{ fontSize: '48px', color: 'darkred' }}>NOT FOUND - CUSTOM (NF_SIMPLE_4)</h1>
+      <p style={{ fontSize: '24px' }}>The page you requested could not be located by our custom not-found page.</p>
       <p style={{ marginTop: '30px' }}>
-        <Link href="/dashboard/overview" style={{ color: 'blue', textDecoration: 'underline' }}>
-          Go to Dashboard Overview
+        <Link href="/" style={{ color: 'purple', textDecoration: 'underline', fontSize: '20px' }}>
+          Go to Home Page
         </Link>
       </p>
     </div>
