@@ -1,4 +1,3 @@
-
 // THIS IS /src/app/layout.tsx - VERSION L_SIMPLE_NO_GLOBALS_5
 // import './globals.css'; // Explicitly NOT importing globals.css for this test
 
