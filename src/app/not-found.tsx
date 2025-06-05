@@ -1,28 +1,11 @@
-import React from "react";
+import React from 'react';
 
-export default function NotFound() {
+export default function MinimalNotFound() {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "radial-gradient(circle, #ff512f 0%, #dd2476 100%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "#fff",
-        fontFamily: "monospace",
-      }}
-    >
-      <h1 style={{ fontSize: "4rem", marginBottom: "1rem", letterSpacing: "0.2em" }}>
-        404
-      </h1>
-      <h2 style={{ fontSize: "2rem", marginBottom: "1rem" }}>
-        Page Not Found
-      </h2>
-      <p style={{ fontSize: "1.2rem", maxWidth: 500, textAlign: "center" }}>
-        Sorry, the page you are looking for does not exist. Please check the URL or return to the homepage.
-      </p>
+    <div style={{ padding: '20px', backgroundColor: 'lightcoral', border: '5px solid darkred', color: 'white', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <h1 style={{ fontSize: '3rem' }}>MINIMAL NOT FOUND PAGE (NF_BAREBONES_1)</h1>
+      <p style={{ fontSize: '1.5rem' }}>If you see this, the simplified not-found page is working.</p>
+      <p>The previous error was: "The default export is not a React Component in /404/not-found".</p>
     </div>
   );
 }
