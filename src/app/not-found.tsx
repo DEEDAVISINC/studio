@@ -1,16 +1,27 @@
+import React from "react";
 
-// THIS IS /src/app/not-found.tsx - VERSION NF_SIMPLE_5
-import Link from 'next/link';
-
-export default function NotFound_NF_SIMPLE_5() {
+export default function NotFound() {
   return (
-    <div style={{ padding: '50px', textAlign: 'center', border: '10px solid darkred', backgroundColor: 'pink' }}>
-      <h1 style={{ fontSize: '48px', color: 'maroon', margin: '10px', border: '2px solid maroon', padding: '5px' }}>NOT FOUND - CUSTOM (NF_SIMPLE_5)</h1>
-      <p style={{ fontSize: '24px', color: 'darkred' }}>The page you requested could not be located by our custom not-found page (NF_SIMPLE_5).</p>
-      <p style={{ marginTop: '30px' }}>
-        <Link href="/" style={{ color: 'purple', textDecoration: 'underline', fontSize: '20px' }}>
-          Go to Home Page (NF_SIMPLE_5)
-        </Link>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "radial-gradient(circle, #ff512f 0%, #dd2476 100%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "#fff",
+        fontFamily: "monospace",
+      }}
+    >
+      <h1 style={{ fontSize: "4rem", marginBottom: "1rem", letterSpacing: "0.2em" }}>
+        404
+      </h1>
+      <h2 style={{ fontSize: "2rem", marginBottom: "1rem" }}>
+        Page Not Found
+      </h2>
+      <p style={{ fontSize: "1.2rem", maxWidth: 500, textAlign: "center" }}>
+        Sorry, the page you are looking for does not exist. Please check the URL or return to the homepage.
       </p>
     </div>
   );
