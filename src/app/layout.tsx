@@ -1,15 +1,30 @@
-// THIS IS /src/app/layout.tsx - VERSION L_SIMPLE_NO_GLOBALS_5
-import React from 'react';
 
-export default function RootLayout_L_SIMPLE_NO_GLOBALS_5({ children }: { children: React.ReactNode }) {
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { AppDataProvider } from '@/contexts/AppDataContext';
+import { Toaster } from '@/components/ui/toaster';
+import { cn } from '@/lib/utils';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+
+export const metadata: Metadata = {
+  title: 'FleetFlow - Streamlined Fleet Management',
+  description: 'Manage your fleet efficiently with FleetFlow.',
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en" style={{ border: '10px solid orange', padding: '10px', margin: '10px' }}>
-      <body style={{ backgroundColor: 'lavender', padding: '20px', margin: '10px', border: '5px solid purple' }}>
-        <div style={{ border: '3px dashed red', padding: '15px', margin: '5px', backgroundColor: 'lightyellow' }}>
-          <h1 style={{ color: 'blue', textAlign: 'center', fontSize: '28px' }}>Root Layout (L_SIMPLE_NO_GLOBALS_5)</h1>
-          <p style={{ textAlign: 'center' }}>Timestamp from layout: {new Date().toISOString()}</p>
+    <html lang="en" suppressHydrationWarning>
+      <body className={cn("min-h-screen bg-background font-sans antialiased", inter.variable)}>
+        <AppDataProvider>
           {children}
-        </div>
+          <Toaster />
+        </AppDataProvider>
       </body>
     </html>
   );
