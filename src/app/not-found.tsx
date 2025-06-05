@@ -1,27 +1,22 @@
 
-// This custom not-found page has been modified for troubleshooting.
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+
+// THIS IS A SUPER BASIC NOT FOUND PAGE FOR DEBUGGING - VERSION 3
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-center">
-      <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
-      <h1 className="text-4xl font-bold tracking-tight text-destructive mb-4">
-        Custom Not Found Page - Test XYZ
+    <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'sans-serif' }}>
+      <h1 style={{ color: 'red', fontSize: '36px', fontWeight: 'bold' }}>
+        NOT FOUND - DEBUG V3
       </h1>
-      <p className="mb-6 text-lg text-muted-foreground">
-        Oops! The page you&apos;re looking for doesn&apos;t seem to exist.
+      <p style={{ fontSize: '18px' }}>
+        If you see this, the simplified not-found.tsx file IS being used.
       </p>
-      <p className="text-sm text-muted-foreground mb-2">
-        This is a custom 404 page.
-      </p>
-      <Link href="/dashboard/overview">
-        <Button variant="default" className="bg-primary hover:bg-primary/90">
+      <p style={{ marginTop: '30px' }}>
+        <Link href="/dashboard/overview" style={{ color: 'blue', textDecoration: 'underline' }}>
           Go to Dashboard Overview
-        </Button>
-      </Link>
+        </Link>
+      </p>
     </div>
   );
 }
