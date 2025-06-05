@@ -1,13 +1,6 @@
-
-import type {NextConfig} from 'next';
-
-const nextConfig: NextConfig = {
-  // experimental: {
-  //   allowedDevOrigins: [
-  //       "https://9002-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev",
-  //       "https://6000-firebase-studio-1748402970575.cluster-ux5mmlia3zhhask7riihruxydo.cloudworkstations.dev"
-  //   ],
-  // },
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // reactStrictMode: true, // Keeping it very minimal for debugging
 };
 
 export default nextConfig;
