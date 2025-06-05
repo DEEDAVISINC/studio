@@ -2,14 +2,6 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    // NOTE: No ignorePatterns here, as it's not a valid Next.js ESLint config option directly.
-    // Ignoring directories for ESLint should be handled in .eslintrc.json or eslint.config.js
-  },
   images: {
     remotePatterns: [
       {
