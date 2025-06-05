@@ -2,9 +2,9 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { cn } from "@/lib/utils";
-// import { AppDataProvider } from '@/contexts/AppDataContext'; // Commented out
-// import { Toaster } from "@/components/ui/toaster"; // Commented out
-// import './globals.css'; // Commented out
+import { AppDataProvider } from '@/contexts/AppDataContext'; // Restored
+import { Toaster } from "@/components/ui/toaster"; // Restored
+import './globals.css'; // Restored
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -28,10 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={cn("min-h-screen bg-background font-sans antialiased", inter.variable)}>
-        {/* <AppDataProvider> */}
+        <AppDataProvider>
           {children}
-          {/* <Toaster /> */}
-        {/* </AppDataProvider> */}
+          <Toaster />
+        </AppDataProvider>
       </body>
     </html>
   );
