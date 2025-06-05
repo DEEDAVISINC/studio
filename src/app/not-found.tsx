@@ -1,4 +1,3 @@
-
 // THIS IS /src/app/not-found.tsx - VERSION NF_SIMPLE_4
 import Link from 'next/link';
 

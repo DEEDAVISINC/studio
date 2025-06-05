@@ -1,4 +1,3 @@
-
 // THIS IS /src/app/layout.tsx - VERSION L_SIMPLE_WITH_GLOBALS_3
 import type { Metadata } from 'next';
 import './globals.css'; // Re-enable globals.css

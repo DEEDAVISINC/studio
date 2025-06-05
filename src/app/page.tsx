@@ -1,4 +1,3 @@
-
 // THIS IS /src/app/page.tsx - VERSION P_SIMPLE_5
 export default function HomePage_P_SIMPLE_5() {
   return (
