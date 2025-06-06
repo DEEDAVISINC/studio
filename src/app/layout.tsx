@@ -20,11 +20,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn("min-h-screen bg-background font-sans antialiased", inter.variable)}>
-        <AppDataProvider>
-          {children}
-          <Toaster />
-        </AppDataProvider>
+      {/* Apply inline style for very obvious red background */}
+      <body 
+        className={cn("min-h-screen bg-background font-sans antialiased", inter.variable)} 
+        style={{ backgroundColor: 'red !important', border: '10px solid lime' }}
+      >
+        <div style={{ border: '5px solid yellow', padding: '10px', backgroundColor: 'rgba(0,0,0,0.1)' }}>
+          <h1 style={{ color: 'white', textAlign: 'center', fontSize: '2rem', backgroundColor: 'blue', padding: '10px' }}>ROOT LAYOUT TEST - RED BACKGROUND / LIME BORDER ON BODY?</h1>
+          <AppDataProvider>
+            {children}
+            <Toaster />
+          </AppDataProvider>
+        </div>
       </body>
     </html>
   );
