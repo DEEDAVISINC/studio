@@ -2,7 +2,7 @@
 import { redirect } from 'next/navigation';
 
 export default function HomePage() {
-  // Redirect to the dashboard overview page.
+  // Immediately redirect to the dashboard overview page.
   redirect('/dashboard/overview');
   
   // This part of the component will not be reached due to the redirect,
