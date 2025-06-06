@@ -9,8 +9,8 @@ import { cn } from '@/lib/utils';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'FleetFlow',
-  description: 'Manage your fleet with FleetFlow.',
+  title: 'FleetFlow - Diagnostic',
+  description: 'Diagnosing rendering issues.',
 };
 
 export default function RootLayout({
@@ -20,9 +20,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn("min-h-screen bg-background font-sans antialiased", inter.variable)}>
+      <body 
+        className={cn(
+          "min-h-screen bg-yellow-200 font-sans antialiased", 
+          inter.variable
+        )}
+      >
+        <div style={{ border: '5px solid red', padding: '20px', backgroundColor: 'lightcoral', color: 'white', textAlign: 'center', fontSize: '20px' }}>
+          ROOT LAYOUT IS ACTIVE - DIAGNOSTIC MODE
+        </div>
         <AppDataProvider>
-          {children}
+          <main>{children}</main>
           <Toaster />
         </AppDataProvider>
       </body>
