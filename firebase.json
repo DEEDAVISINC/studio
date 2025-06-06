@@ -1,14 +1,10 @@
-
 {
   "hosting": {
-    "source": ".",
+    "public": "out",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ]
-    // For Firebase App Hosting with Next.js,
-    // most backend configuration is handled by apphosting.yaml
-    // and framework detection.
   }
 }
