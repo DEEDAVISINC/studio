@@ -1,7 +1,6 @@
 
 {
   "hosting": {
-    "public": "out",  // Serve files from the 'out' directory for static export
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -10,7 +9,7 @@
     "rewrites": [
       {
         "source": "**",
-        "destination": "/index.html"
+        "function": "nextApp"
       }
     ]
   }

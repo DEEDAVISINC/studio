@@ -1,9 +1,6 @@
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  // Ensure output: 'export' is NOT present for local development (npm run dev)
-  // output: 'export', // This line should be commented out or removed for dev
+  // output: 'export', // REMOVED: This line is removed to enable dynamic Next.js serving
 };
 
-export default nextConfig;
+module.exports = nextConfig;
