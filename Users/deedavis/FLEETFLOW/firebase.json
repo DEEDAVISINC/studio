@@ -1,3 +1,4 @@
+
 {
   "hosting": {
     "public": "public",
@@ -18,25 +19,31 @@
     "runtime": "nodejs20",
     "ignore": [
       "node_modules/.cache",
-      ".firebase",
+      ".firebase/**",
       ".firebaserc",
-      ".git",
-      ".github",
+      ".git/**",
+      ".github/**",
       "firebase-debug.log",
       "firebase-debug.*.log",
-      ".eslintrc.json",
+      "*.log",
       "fleetflowsub/**",
       "src/components/ui/**",
       "src/contexts/**",
       "src/hooks/**",
       "src/lib/firebase.ts",
+      "src/ai/**",
       "README.md",
       "apphosting.yaml",
       "components.json",
-      "next.config.ts",
       "tailwind.config.ts",
       "tsconfig.json",
-      "public/**"
+      "src/app/about/**",
+      "src/app/contact/**",
+      "src/app/api/**",
+      "src/app/dashboard/**",
+      "src/app/flow-login/**",
+      "src/app/login/**",
+      "src/app/not-found.tsx"
     ]
   }
 }
