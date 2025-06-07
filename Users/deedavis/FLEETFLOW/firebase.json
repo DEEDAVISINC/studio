@@ -1,0 +1,42 @@
+{
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "function": "nextApp"
+      }
+    ]
+  },
+  "functions": {
+    "source": ".",
+    "runtime": "nodejs20",
+    "ignore": [
+      "node_modules/.cache",
+      ".firebase",
+      ".firebaserc",
+      ".git",
+      ".github",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      ".eslintrc.json",
+      "fleetflowsub/**",
+      "src/components/ui/**",
+      "src/contexts/**",
+      "src/hooks/**",
+      "src/lib/firebase.ts",
+      "README.md",
+      "apphosting.yaml",
+      "components.json",
+      "next.config.ts",
+      "tailwind.config.ts",
+      "tsconfig.json",
+      "public/**"
+    ]
+  }
+}
