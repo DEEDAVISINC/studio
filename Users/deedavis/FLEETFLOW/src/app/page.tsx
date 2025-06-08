@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 
 /**
  * This is the root page of the application.
- * It immediately redirects the user to the dashboard overview page.
+ * It immediately redirects the user to the main dashboard overview page.
  */
 export default function HomePage() {
   // Perform a server-side redirect to the main dashboard overview page.
